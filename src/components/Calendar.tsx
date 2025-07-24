@@ -11,14 +11,39 @@ import CalendarHeader from "./CalendarHeader";
 import CalendarCell from "./CalendarCell";
 import { useCalendar } from "@/context/CalendarContext";
 import { VolatilityLevel } from "@/types";
+import ViewToggle from "./ViewToggle";
+import clsx from "clsx";
 
 const Calendar = () => {
-  const { currentMonth, setMetricsMap, setVolatilityMap } = useCalendar();
+  const { currentMonth, setMetricsMap, setVolatilityMap, viewMode } =
+    useCalendar();
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 0 });
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+  let dayCells = [];
+
+  if (viewMode === "monthly") {
+    let day = startDate;
+    while (day <= endDate) {
+      for (let i = 0; i < 7; i++) {
+        dayCells.push(<CalendarCell key={day.toString()} day={day} />);
+        day = addDays(day, 1);
+      }
+    }
+  } else if (viewMode === "weekly") {
+    const today = new Date();
+    const weekStart = startOfWeek(today, { weekStartsOn: 0 });
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(weekStart, i);
+      dayCells.push(<CalendarCell key={day.toString()} day={day} />);
+    }
+  } else if (viewMode === "daily") {
+    const today = new Date();
+    dayCells.push(<CalendarCell key={today.toString()} day={today} />);
+  }
 
   useEffect(() => {
     const tempVolatility: Map<string, VolatilityLevel> = new Map();
@@ -53,21 +78,30 @@ const Calendar = () => {
       day = addDays(day, 1);
     }
 
-    rows.push(
-      <React.Fragment key={day.toString()}>{days}</React.Fragment>
-    );
+    rows.push(<React.Fragment key={day.toString()}>{days}</React.Fragment>);
     days = [];
   }
 
   return (
     <>
+      <ViewToggle />
       <CalendarHeader />
-      <div className="grid grid-cols-7 text-center font-semibold bg-gray-100 py-2 rounded-md mb-2 text-sm sm:text-base">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d}>{d}</div>
-        ))}
+      {viewMode !== "daily" && (
+        <div className="grid grid-cols-7 text-center font-semibold bg-gray-100 py-2 rounded-md mb-2 text-sm sm:text-base">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            <div key={d}>{d}</div>
+          ))}
+        </div>
+      )}
+      <div
+        className={clsx({
+          "grid grid-cols-7 gap-1 sm:gap-2":
+            viewMode === "monthly" || viewMode === "weekly",
+          "grid grid-cols-1": viewMode === "daily",
+        })}
+      >
+        {dayCells}
       </div>
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">{rows}</div>
     </>
   );
 };

@@ -30,6 +30,7 @@ const CalendarCell: React.FC<Props> = ({ day }) => {
     setFocusedDate,
     setShowTooltip,
     cellRefs,
+    openModal,
   } = useCalendar();
 
   const key = day.toDateString();
@@ -95,12 +96,35 @@ const CalendarCell: React.FC<Props> = ({ day }) => {
     <div
       tabIndex={0}
       ref={cellRef}
-      onClick={() => setFocusedDate(key)}
+      onClick={() => {
+        setFocusedDate(key);
+        setShowTooltip(""); 
+        if (metrics) {
+          openModal(
+            <div>
+              <h2 className="text-lg font-semibold mb-2">{key}</h2>
+              <p>
+                <strong>Open:</strong> ${metrics.open}
+              </p>
+              <p>
+                <strong>Close:</strong> ${metrics.close}
+              </p>
+              <p>
+                <strong>Volume:</strong> {metrics.volume}
+              </p>
+              <p>
+                <strong>Volatility:</strong> {metrics.volatility}
+              </p>
+            </div>
+          );
+        }
+      }}
       onKeyDown={handleKeyDown}
       className={clsx(
         "border p-1 sm:p-2 text-xs sm:text-sm relative rounded-md transition duration-300 ease-in-out shadow-sm cursor-pointer group focus:outline-none aspect-square h-16 sm:h-20",
         isCurrent ? "text-black" : "text-gray-400",
-        isCurrentDay && "border-2 border-blue-500 font-bold ring-2 ring-blue-400",
+        isCurrentDay &&
+          "border-2 border-blue-500 font-bold ring-2 ring-blue-400",
         isFocused && "ring-2 ring-purple-600",
         getColorByVolatility(volatility)
       )}

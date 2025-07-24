@@ -13,3 +13,5 @@ export type CalendarState = {
   volatilityMap: Map<string, VolatilityLevel>;
   focusedDate: string | null;
 };
+
+export type ViewMode = "monthly" | "weekly" | "daily";

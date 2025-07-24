@@ -1,7 +1,19 @@
 "use client";
+
 import React from "react";
 import Calendar from "@/components/Calendar";
-import { CalendarProvider } from "@/context/CalendarContext";
+import { CalendarProvider, useCalendar } from "@/context/CalendarContext";
+import Modal from "@/components/Modal";
+
+const ModalWrapper = () => {
+  const { isModalOpen, modalContent, closeModal } = useCalendar();
+
+  return (
+    <Modal isOpen={isModalOpen} onClose={closeModal}>
+      {modalContent}
+    </Modal>
+  );
+};
 
 export default function Home() {
   return (
@@ -13,6 +25,7 @@ export default function Home() {
           </h1>
           <Calendar />
         </div>
+        <ModalWrapper />
       </main>
     </CalendarProvider>
   );
