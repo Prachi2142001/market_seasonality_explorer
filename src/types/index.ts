@@ -1,0 +1,15 @@
+export type VolatilityLevel = "low" | "medium" | "high";
+
+export type Metric = {
+  open: string;
+  close: string;
+  volume: string;
+  volatility: VolatilityLevel;
+};
+
+export type CalendarState = {
+  currentMonth: Date;
+  metricsMap: Map<string, Metric>;
+  volatilityMap: Map<string, VolatilityLevel>;
+  focusedDate: string | null;
+};
