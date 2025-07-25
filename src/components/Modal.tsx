@@ -14,7 +14,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray bg-opactity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="bg-white p-6 rounded-lg shadow-xl w-11/12 max-w-md relative animate-fade-in"
         onClick={(e) => e.stopPropagation()}

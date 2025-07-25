@@ -15,10 +15,10 @@ const ViewToggle = () => {
           key={mode}
           onClick={() => setViewMode(mode)}
           className={clsx(
-            "px-3 py-1 rounded-md font-medium capitalize border",
+                      "px-4 py-1 rounded-full text-sm font-medium border",
             viewMode === mode
-              ? "bg-blue-600 text-white"
-              : "bg-white text-gray-700 hover:bg-gray-200"
+                ? "bg-blue-600 text-white border-blue-700"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
           )}
         >
           {mode}

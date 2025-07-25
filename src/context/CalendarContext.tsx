@@ -1,6 +1,12 @@
 "use client";
 import React, { createContext, useState, useContext, useRef } from "react";
-import { CalendarState, Metric, ViewMode, VolatilityLevel } from "@/types";
+import {
+  CalendarState,
+  Metric,
+  VolatilityLevel,
+  ViewMode,
+  CalendarMetrics,
+} from "@/types";
 
 type CalendarContextType = CalendarState & {
   setCurrentMonth: (date: Date) => void;
@@ -13,8 +19,12 @@ type CalendarContextType = CalendarState & {
   modalContent: React.ReactNode;
   openModal: (content: React.ReactNode) => void;
   closeModal: () => void;
+  selectedVolatility: string;
+  setSelectedVolatility: (level: string) => void;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+  metrics: CalendarMetrics[];
+  setMetrics: React.Dispatch<React.SetStateAction<CalendarMetrics[]>>;
 };
 
 const CalendarContext = createContext<CalendarContextType | undefined>(
@@ -32,18 +42,14 @@ export const CalendarProvider = ({
     Map<string, VolatilityLevel>
   >(new Map());
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
-  const cellRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const [selectedVolatility, setSelectedVolatility] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("monthly");
-
-  const setShowTooltip = (key: string) => {
-    const el = cellRefs.current.get(key);
-    if (el) {
-      el.focus();
-    }
-  };
+  const cellRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const [metrics, setMetrics] = useState<CalendarMetrics[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  
 
   const openModal = (content: React.ReactNode) => {
     setModalContent(content);
@@ -53,6 +59,13 @@ export const CalendarProvider = ({
   const closeModal = () => {
     setIsModalOpen(false);
     setModalContent(null);
+  };
+
+  const setShowTooltip = (key: string) => {
+    const el = cellRefs.current.get(key);
+    if (el) {
+      el.focus();
+    }
   };
 
   return (
@@ -72,8 +85,12 @@ export const CalendarProvider = ({
         modalContent,
         openModal,
         closeModal,
+        selectedVolatility,
+        setSelectedVolatility,
         viewMode,
         setViewMode,
+        metrics,
+        setMetrics,
       }}
     >
       {children}
@@ -83,8 +100,7 @@ export const CalendarProvider = ({
 
 export const useCalendar = () => {
   const context = useContext(CalendarContext);
-  if (!context) {
+  if (!context)
     throw new Error("useCalendar must be used within CalendarProvider");
-  }
   return context;
 };
