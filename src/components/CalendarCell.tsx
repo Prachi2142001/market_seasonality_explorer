@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from "react";
 import clsx from "clsx";
 import { format, isSameMonth, isToday } from "date-fns";
 import { useCalendar } from "@/context/CalendarContext";
+import { useModal } from "@/context/ModalContext";
 import Tooltip from "./Tooltip";
 import UpArrow from "@/icons/UpArrow";
 import DownArrow from "@/icons/DownArrow";
@@ -24,10 +25,23 @@ const getColorByVolatility = (level: string) => {
 
 type Props = {
   day: Date;
+  isCurrentMonth: boolean;
+  isSelected: boolean;
+  isDayToday: boolean;
+  onClick: () => void;
   aggregated?: AggregatedMetrics;
+  metrics?: any; 
+  viewMode?: 'daily' | 'weekly' | 'monthly';  // Add this line 
 };
 
-const CalendarCell: React.FC<Props> = ({ day }) => {
+const CalendarCell: React.FC<Props> = ({ day,
+  isCurrentMonth,
+  isSelected,
+  isDayToday,
+  onClick,  
+  metrics,
+  viewMode = 'daily'   }) => {
+  const { openModal } = useModal();
   const {
     metricsMap,
     volatilityMap,
@@ -35,7 +49,6 @@ const CalendarCell: React.FC<Props> = ({ day }) => {
     setFocusedDate,
     setShowTooltip,
     cellRefs,
-    openModal,
   } = useCalendar();
 
   const key = day.toDateString();
@@ -45,9 +58,10 @@ const CalendarCell: React.FC<Props> = ({ day }) => {
   const isFocused = focusedDate === key;
 
   const volatility = volatilityMap.get(key) ?? "low";
-  const metrics = metricsMap.get(key);
+
 
   const cellRef = useRef<HTMLDivElement | null>(null);
+
 
   useEffect(() => {
     if (cellRef.current) {
@@ -159,72 +173,93 @@ const CalendarCell: React.FC<Props> = ({ day }) => {
 
     background = `linear-gradient(to bottom, rgba(34, 197, 94, ${normalizedLiquidity}) 0%, transparent 100%)`;
   }
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick();
+    setFocusedDate(key);
+    
+    if (metrics) {
+      const modalContent = (
+        <div className="p-4">
+          <h3 className="text-lg font-semibold mb-4">
+            {format(day, 'EEEE, MMMM d, yyyy')}
+          </h3>
+          <div className="grid gap-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Open:</span>
+              <span>${metrics.open}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Close:</span>
+              <span>${metrics.close}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Volume:</span>
+              <span>{metrics.volume}</span>
+            </div>
+            {metrics.volatility !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Volatility:</span>
+                <span>{metrics.volatility}%</span>
+              </div>
+            )}
+            {metrics.performance !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Performance:</span>
+                <span className={metrics.performance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {metrics.performance >= 0 ? '↑' : '↓'} {Math.abs(metrics.performance)}%
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+      openModal(modalContent);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    setShowTooltip(key);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip("");
+  };
+
   return (
     <div
       tabIndex={0}
       ref={cellRef}
-      onClick={() => {
-        setFocusedDate(key);
-        setShowTooltip(" ");
-        const metrics = metricsMap.get(key);
-        if (metrics) {
-          openModal(
-            <div className="space-y-1">
-              <p className="font-semibold">{day.toDateString()}</p>
-              <p>
-                <strong>Open:</strong> ${metrics.open}
-              </p>
-              <p>
-                <strong>Close:</strong> ${metrics.close}
-              </p>
-              <p>
-                <strong>Volume:</strong> {metrics.volume}
-              </p>
-              <p>
-                <strong>Liquidity:</strong>{" "}
-                {typeof metrics.liquidity === "number"
-                  ? metrics.liquidity.toFixed(2)
-                  : "N/A"}
-              </p>
-
-              <p>
-                <strong>Volatility:</strong> {metrics.volatility}
-              </p>
-            </div>
-          );
-        }
-      }}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onKeyDown={handleKeyDown}
       className={clsx(
-        "border p-1 sm:p-2 text-xs sm:text-sm relative rounded-md transition duration-300 ease-in-out shadow-sm cursor-pointer group focus:outline-none aspect-square h-16 sm:h-20",
+        "group border p-1 sm:p-2 text-xs sm:text-sm relative ml-12 rounded-md transition duration-300 ease-in-out shadow-sm cursor-pointer focus:outline-none aspect-square h-16 sm:h-20 overflow-visible",
         getColorByVolatility(volatility),
-        isCurrent ? "text-black" : "text-gray-300",
-        isCurrentDay &&
-        "border-2 border-blue-500 font-bold ring-2 ring-blue-400",
-        isFocused && "ring-2 ring-purple-600"
+        isCurrentMonth ? "text-black" : "text-gray-400 bg-gray-50",
+        isDayToday && "border-2 border-blue-500 font-bold ring-2 ring-blue-400",
+        (isFocused || focusedDate === key) && "ring-2 ring-blue-500 ring-offset-2 z-20",
+        !isCurrentMonth && "opacity-60"
       )}
     >
-      {/* Liquidity background gradient layer */}
-      <div className="absolute inset-0 z-0" style={{ background }} />
-
-      {/* Liquidity overlay elements (like stripes) */}
-      {renderLiquidityOverlay()}
-
-      {/* Date in top-left */}
-      <div className="absolute top-1 left-1 text-[0.65rem] sm:text-sm font-semibold text-black z-10">
-        {formattedDate}
+      <div className="absolute inset-0 flex flex-col p-1">
+        <div className="flex justify-between items-start">
+          <button className={clsx("font-bold text-red-700", isDayToday && "text-blue-700")} onClick={() => openModal}>
+            {formattedDate}
+          </button>
+          {metrics && renderPerformanceIcon()}
+        </div>
       </div>
 
-      {/* Performance arrow in top-right */}
-      <div className="absolute top-1 right-1 z-10">
-        {renderPerformanceIcon()}
-      </div>
-
-      {/* Volume dot */}
-      <div className="absolute bottom-1 right-1  z-10">{renderVolumeDot()}</div>
-
-      {/* Tooltip (hover layer) */}
-      {metrics && <Tooltip metrics={metrics} />}
+      {metrics && (
+        <>
+          {renderLiquidityOverlay()}
+          <Tooltip metrics={metrics} />
+          {renderVolumeDot()}
+        </>
+      )}
     </div>
   );
 };

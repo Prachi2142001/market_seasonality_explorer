@@ -6,6 +6,7 @@ export type Metric = {
   volume: string;
   volatility: VolatilityLevel;
   liquidity?: number;
+  performance?: number; 
 };
 
 export type CalendarState = {
@@ -23,8 +24,7 @@ export type CalendarMetrics = {
   volatility: number;
   liquidity?: number;
   performance: number;
+  high: number; 
+  low: number;  
 };
-
-  
-
 export type ViewMode = "monthly" | "weekly" | "daily";

@@ -6,18 +6,23 @@ import {
   startOfWeek,
   endOfWeek,
   addDays,
+  isSameMonth,
+  format,
+  isToday,
+  isSameDay,
+  isWithinInterval,
 } from "date-fns";
 import CalendarHeader from "./CalendarHeader";
 import CalendarCell from "./CalendarCell";
 import { useCalendar } from "@/context/CalendarContext";
-import { VolatilityLevel, CalendarMetrics, Metric } from "@/types";
-import ViewToggle from "./ViewToggle";
-import clsx from "clsx";
-import {
-  AggregatedMetrics,
-  aggregateMonthlyMetrics,
-  aggregateWeeklyMetrics,
-} from "@/utils/aggregate";
+import { useMarketData } from "@/context/MarketDataContext";
+import { ViewMode, VolatilityLevel } from "@/types";
+import { Spinner } from "@/components/ui/spinner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { clsx } from "clsx";
+import { getVolatilityLevel } from "@/utils/helpers";
+import { aggregateWeeklyMetrics, aggregateMonthlyMetrics } from "@/utils/aggregate";
 
 const Calendar = () => {
   const {
@@ -27,7 +32,122 @@ const Calendar = () => {
     viewMode,
     metrics,
     setMetrics,
+    selectedDate,
+    setSelectedDate,
   } = useCalendar();
+
+  const { marketData, loading, error } = useMarketData();
+
+  // Filter and aggregate data based on view mode
+  const { filteredData, aggregatedData } = useMemo(() => {
+    if (!marketData || !selectedDate) return { filteredData: [], aggregatedData: [] };
+
+    const currentDate = selectedDate;
+    let filtered: any[] = [];
+    let aggregated: any[] = [];
+
+    switch (viewMode) {
+      case "daily":
+        // Show data for the selected date
+        filtered = marketData.filter((item) => {
+          return (
+            item.date.getDate() === currentDate.getDate() &&
+            item.date.getMonth() === currentDate.getMonth() &&
+            item.date.getFullYear() === currentDate.getFullYear()
+          );
+        });
+        break;
+
+      case "weekly": {
+        const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+        const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+
+        filtered = marketData.filter((item) =>
+          isWithinInterval(item.date, { start: weekStart, end: weekEnd })
+        );
+
+
+        const weeklyData = aggregateWeeklyMetrics(
+          marketData.filter((item) =>
+            isWithinInterval(item.date, {
+              start: startOfMonth(weekStart),
+              end: endOfMonth(weekEnd),
+            })
+          )
+        );
+
+
+        aggregated = weeklyData.filter((week) =>
+          isWithinInterval(currentDate, { start: week.periodStart, end: week.periodEnd })
+        );
+        break;
+      }
+
+      case "monthly":
+      default: {
+
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(monthStart);
+
+
+        filtered = marketData.filter((item) =>
+          isWithinInterval(item.date, { start: monthStart, end: monthEnd })
+        );
+
+
+        aggregated = aggregateMonthlyMetrics(
+          marketData.filter((item) => item.date.getFullYear() === currentDate.getFullYear())
+        );
+
+
+        aggregated = aggregated.filter((month) =>
+          month.periodStart.getMonth() === currentDate.getMonth() &&
+          month.periodStart.getFullYear() === currentDate.getFullYear()
+        );
+        break;
+      }
+    }
+
+    return { filteredData: filtered, aggregatedData: aggregated };
+  }, [marketData, viewMode, selectedDate]);
+
+  useEffect(() => {
+    if (filteredData.length > 0) {
+      const tempVolatility = new Map<string, VolatilityLevel>();
+      const tempMetrics = new Map<string, any>();
+
+      filteredData.forEach((item) => {
+        const dateKey = item.date.toDateString();
+        tempVolatility.set(dateKey, getVolatilityLevel(item.volatility));
+        tempMetrics.set(dateKey, {
+          open: item.open,
+          close: item.close,
+          volume: item.volume,
+          volatility: item.volatility,
+          performance: item.performance,
+          // Add aggregated data for the period if available
+          aggregated: aggregatedData[0] || null,
+        });
+      });
+
+      setVolatilityMap(tempVolatility);
+      setMetricsMap(tempMetrics);
+      setMetrics(filteredData);
+    }
+  }, [
+    filteredData,
+    aggregatedData,
+    setVolatilityMap,
+    setMetricsMap,
+    setMetrics,
+  ]);
+
+  // Set initial selected date to today if not set
+  useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(new Date());
+    }
+  }, [selectedDate, setSelectedDate]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
@@ -35,133 +155,134 @@ const Calendar = () => {
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
   useEffect(() => {
-    const tempVolatility: Map<string, VolatilityLevel> = new Map();
-    const tempMetrics: Map<string, CalendarMetrics> = new Map();
-    const tempMetricsConverted: Map<string, Metric> = new Map();
-    const levels: VolatilityLevel[] = ["low", "medium", "high"];
+    if (marketData && marketData.length > 0) {
+      const tempVolatility = new Map<string, VolatilityLevel>();
+      const tempMetrics = new Map<string, any>();
+      const tempMetricsConverted = new Map<string, any>();
 
-    let d = new Date(startDate);
+      marketData.forEach((data) => {
+        const dateKey = data.date.toDateString();
+        tempVolatility.set(dateKey, getVolatilityLevel(data.volatility));
+        tempMetrics.set(dateKey, data);
+        tempMetricsConverted.set(dateKey, {
+          open: data.open.toString(),
+          close: data.close.toString(),
+          volume: data.volume.toString(),
+          volatility: data.volatility,
+        });
+      });
 
-    while (d <= endDate) {
-      const open = parseFloat((60000 + Math.random() * 5000).toFixed(2));
-      const close = parseFloat((60000 + Math.random() * 5000).toFixed(2));
-      const volume = parseFloat((Math.random() * 5).toFixed(2));
-      const volatilityLevel = levels[Math.floor(Math.random() * levels.length)];
-      let performance = 0;
-      if (close > open) performance = 1;
-      else if (close < open) performance = -1;
-
-      const dateKey = d.toDateString();
-
-      const metricsEntry: CalendarMetrics = {
-        date: new Date(d),
-        open,
-        close,
-        volume,
-        volatility: Math.abs(open - close) / open,
-        performance,
-      };
-
-      const metricEntry: Metric = {
-        open: metricsEntry.open.toString(),
-        close: metricsEntry.close.toString(),
-        volume: metricsEntry.volume.toString(),
-        volatility: volatilityLevel,
-      };
-
-      tempVolatility.set(dateKey, volatilityLevel);
-      tempMetrics.set(dateKey, metricsEntry);
-      tempMetricsConverted.set(dateKey, metricEntry);
-
-      d = addDays(d, 1);
+      setVolatilityMap(tempVolatility);
+      setMetrics(Array.from(tempMetrics.values()));
+      setMetricsMap(tempMetricsConverted);
     }
+  }, [marketData, setMetrics, setMetricsMap, setVolatilityMap]);
 
-    setVolatilityMap(tempVolatility);
-    setMetrics(Array.from(tempMetrics.values()));
-    setMetricsMap(tempMetricsConverted);
-  }, [startDate.toDateString(), endDate.toDateString()]);
-
-  const aggregatedData = useMemo<AggregatedMetrics[]>(() => {
-    if (viewMode === "weekly") return aggregateWeeklyMetrics(metrics);
-    if (viewMode === "monthly") return aggregateMonthlyMetrics(metrics);
-    return [];
-  }, [viewMode, metrics]);
-
+  // Generate all days in the current view based on viewMode
   const allDays = useMemo(() => {
     const days = [];
-    let d = new Date(startDate);
-    while (d <= endDate) {
-      days.push(new Date(d));
-      d = addDays(d, 1);
+    let current = new Date(startDate);
+
+    if (viewMode === "monthly") {
+      // For monthly view, show all days in the month
+      while (current <= endDate) {
+        days.push(new Date(current));
+        current = addDays(current, 1);
+      }
+    } else if (viewMode === "weekly") {
+      // For weekly view, show only the current week
+      const weekStart = startOfWeek(currentMonth, { weekStartsOn: 0 });
+      const weekEnd = endOfWeek(currentMonth, { weekStartsOn: 0 });
+      current = new Date(weekStart);
+
+      while (current <= weekEnd) {
+        days.push(new Date(current));
+        current = addDays(current, 1);
+      }
+    } else {
+      // For daily view, show only the selected day or today
+      const dayToShow = selectedDate || currentMonth;
+      days.push(dayToShow);
     }
+
     return days;
-  }, [startDate, endDate]);
+  }, [startDate, endDate, viewMode, currentMonth, selectedDate]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner className="h-8 w-8 text-blue-500" />
+        <span className="ml-2">Loading market data...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error loading data</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (metrics.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        No market data available for the selected period.
+      </div>
+    );
+  }
 
   return (
-    <>
-      <ViewToggle />
-      <CalendarHeader />
-  
-      {viewMode !== "daily" && (
-        <div className="grid grid-cols-7 text-center font-semibold bg-gray-100 py-2 rounded-md mb-2 text-sm sm:text-base">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-            <div key={d}>{d}</div>
-          ))}
-        </div>
-      )}
-  
-      <div
-        className={clsx({
-          "grid grid-cols-7 gap-1 sm:gap-2":
-            viewMode === "monthly" || viewMode === "weekly",
-          "grid grid-cols-1": viewMode === "daily",
-        })}
-      >
-        {viewMode === "daily" ? (
-          <CalendarCell
-            key={new Date().toDateString()}
-            day={new Date()}
-            aggregated={aggregatedData.find((d) =>
-              new Date() >= d.periodStart && new Date() <= d.periodEnd
-            )}
-          />
-        ) : viewMode === "weekly" ? (
-          (() => {
-            const today = new Date();
-            const weekStart = startOfWeek(today);// Sunday
-            return Array.from({ length: 7 }).map((_, i) => {
-              const day = addDays(weekStart, i);
-              const data = aggregatedData.find(
-                (d) => day >= d.periodStart && day <= d.periodEnd
-              );
-              return (
-                <CalendarCell
-                  key={day.toDateString()}
-                  day={day}
-                  aggregated={data}
-                />
-              );
-            });
-          })()
-        ) : (
-          // monthly
-          allDays.map((day) => {
-            const data = aggregatedData.find(
-              (d) => day >= d.periodStart && day <= d.periodEnd
-            );
-            return (
-              <CalendarCell
-                key={day.toDateString()}
-                day={day}
-                aggregated={data}
-              />
-            );
-          })
-        )}
+    <div className="flex flex-col h-full w-full overflow-x-hidden">
+      <div className="sticky top-0 bg-white z-10 shadow-sm p-4">
+        <CalendarHeader />
       </div>
-    </>
+
+      <div className="flex-1 overflow-auto p-1 sm:p-2">
+        <div className="grid grid-cols-7 gap-1 w-full min-w-[360px]">
+          {viewMode !== "daily" && (
+            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <div key={day} className="text-xs sm:text-sm font-medium text-center py-1 sm:py-2 truncate">
+                {day}
+              </div>
+            ))
+          )}
+
+          {allDays.map((day) => {
+            const dateKey = day.toDateString();
+            const isCurrentMonth = isSameMonth(day, currentMonth);
+            const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+            const isTodayDate = isToday(day);
+
+            return (
+              <div
+                key={dateKey}
+                className={clsx({
+                  "col-span-7 w-full h-24 sm:h-32": viewMode === "daily",
+                  "h-16 sm:h-20": viewMode !== "daily",
+                  "opacity-40": !isCurrentMonth && viewMode !== "daily",
+                  "min-w-0 flex": true,
+                })}
+              >
+                <CalendarCell
+                  day={day}
+                  isCurrentMonth={isCurrentMonth}
+                  isSelected={isSelected}
+                  isDayToday={isTodayDate}
+                  onClick={() => setSelectedDate(day)}
+                  metrics={filteredData.find(item => isSameDay(item.date, day))}
+                  viewMode={viewMode}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
-  
 };
 
 export default Calendar;

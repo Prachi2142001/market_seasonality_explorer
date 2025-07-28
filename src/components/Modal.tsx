@@ -1,34 +1,34 @@
-// src/components/Modal.tsx
 "use client";
 import React from "react";
-import { createPortal } from "react-dom";
-import clsx from "clsx";
+import { useModal } from "@/context/ModalContext";
 
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}
+const Modal = () => {
+  const { isOpen, closeModal, content } = useModal();
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
   if (!isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="bg-white p-6 rounded-lg shadow-xl w-11/12 max-w-md relative animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
+      <div 
+        className="fixed inset-0 bg-black/10 backdrop-blur-sm transition-opacity cursor-pointer"
+        onClick={closeModal}
+        aria-hidden="true"
+      />
+      <div className="relative bg-white rounded-lg p-6 w-full max-w-md max-h-[80vh] overflow-y-auto shadow-xl pointer-events-auto z-10">
         <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-600 hover:text-black"
+          onClick={closeModal}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-100"
+          aria-label="Close modal"
         >
-          ✕
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
-        {children}
+        <div className="max-h-[calc(80vh-3rem)] overflow-y-auto">
+          {content}
+        </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };
 

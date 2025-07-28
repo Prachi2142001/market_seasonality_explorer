@@ -4,30 +4,48 @@ import React from "react";
 import { Metric } from "@/types";
 
 type TooltipProps = {
-  metrics: Metric;
+  metrics?: Metric; 
+};
+
+const formatNumber = (num: number | string | undefined, decimals = 3): string => {
+  const parsed = Number(num);
+  if (!num || isNaN(parsed)) return "N/A";
+  return parsed.toFixed(decimals);
 };
 
 const Tooltip: React.FC<TooltipProps> = ({ metrics }) => {
+  if (!metrics) {
+    return (
+      <div className="absolute top-[120%] left-1/2 transform -translate-x-1/2 z-50 bg-white p-4 rounded shadow text-xs text-gray-500 w-40 sm:w-48 text-center border border-gray-200">
+        Data not available
+      </div>
+    );
+  }
+
   return (
     <div
-      className="absolute z-50 hidden group-hover:block bg-white text-black text-xs sm:text-sm p-2 rounded shadow-lg top-full left-1/2 transform -translate-x-1/2 mt-2 w-40 sm:w-48 whitespace-nowrap"
+      className="absolute z-50 hidden group-hover:block bg-white text-black text-xs sm:text-sm p-4 rounded shadow-lg top-[120%] left-1/2 transform -translate-x-1/2 w-40 sm:w-48 whitespace-nowrap pointer-events-none transition-opacity duration-200 opacity-0 group-hover:opacity-100"
       role="tooltip"
     >
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-2">
         <span className="font-medium">Open:</span>
-        <span>${metrics.open}</span>
+        <span>${metrics.open ?? "N/A"}</span>
       </div>
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-2">
         <span className="font-medium">Close:</span>
-        <span>${metrics.close}</span>
+        <span>${metrics.close ?? "N/A"}</span>
       </div>
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-2">
         <span className="font-medium">Volume:</span>
-        <span>{metrics.volume}</span>
+        <span title={metrics.volume?.toString() ?? "N/A"}>
+          {formatNumber(metrics.volume)}
+        </span>
       </div>
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-2">
         <span className="font-medium">Volatility:</span>
-        <span>{metrics.volatility}</span>
+        <span title={metrics.volatility?.toString() ?? "N/A"}>
+          {formatNumber(metrics.volatility)}
+        </span>
       </div>
     </div>
   );
