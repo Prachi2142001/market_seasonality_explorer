@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import dynamic from 'next/dynamic';
 import { useMarketData } from "@/context/MarketDataContext";
+import { useCalendar } from "@/context/CalendarContext";
 import { Calendar as CalendarIcon, RefreshCw, AlertCircle } from "lucide-react";
 
-// Dynamically import the Calendar component to avoid SSR issues
+
 const Calendar = dynamic(() => import("@/components/Calendar"), { ssr: false });
 
 const SYMBOLS = [
@@ -18,7 +19,7 @@ const SYMBOLS = [
 
 export default function Home() {
   const { loading, error, selectedSymbol, setSelectedSymbol, refreshData } = useMarketData();
-  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const { viewMode, setViewMode } = useCalendar();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -43,7 +44,7 @@ export default function Home() {
           
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
-              <label htmlFor="symbol" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="symbol" className="text-center block text-sm font-medium text-gray-700 mb-1">
                 Asset
               </label>
               <select
@@ -61,21 +62,32 @@ export default function Home() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-center">View</label>
               <div className="flex rounded-md shadow-sm">
-                {['daily', 'weekly', 'monthly'].map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setViewMode(mode as any)}
-                    className={`px-3 py-2 text-sm font-medium ${viewMode === mode
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                      } border border-gray-300 ${mode === 'daily' ? 'rounded-l-md' : ''} ${mode === 'monthly' ? 'rounded-r-md' : ''} focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500`}
-                  >
-                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                  </button>
-                ))}
+                <button
+                  onClick={() => setViewMode('daily')}
+                  className={`px-3 py-1 text-sm rounded-l-md cursor-pointer ${
+                    viewMode === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  onClick={() => setViewMode('weekly')}
+                  className={`px-3 py-1 text-sm cursor-pointer ${
+                    viewMode === 'weekly' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setViewMode('monthly')}
+                  className={`px-3 py-1 text-sm rounded-r-md cursor-pointer  ${
+                    viewMode === 'monthly' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Monthly
+                </button>
               </div>
             </div>
 
@@ -84,7 +96,7 @@ export default function Home() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={loading || isRefreshing}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center cursor-pointer px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh

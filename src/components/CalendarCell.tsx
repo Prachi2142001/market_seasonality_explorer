@@ -34,13 +34,15 @@ type Props = {
   viewMode?: 'daily' | 'weekly' | 'monthly';  // Add this line 
 };
 
-const CalendarCell: React.FC<Props> = ({ day,
+const CalendarCell: React.FC<Props> = ({
+  day,
   isCurrentMonth,
   isSelected,
   isDayToday,
   onClick,  
   metrics,
-  viewMode = 'daily'   }) => {
+  viewMode = 'daily'
+}) => {
   const { openModal } = useModal();
   const {
     metricsMap,
@@ -57,6 +59,8 @@ const CalendarCell: React.FC<Props> = ({ day,
   const isCurrentDay = isToday(day);
   const isFocused = focusedDate === key;
 
+  // Use the metrics prop first, fall back to metricsMap if not available
+  const cellMetrics = metrics || metricsMap.get(key);
   const volatility = volatilityMap.get(key) ?? "low";
 
 
@@ -112,9 +116,9 @@ const CalendarCell: React.FC<Props> = ({ day,
   };
 
   const renderPerformanceIcon = () => {
-    if (!metrics) return null;
-    const open = parseFloat(metrics.open);
-    const close = parseFloat(metrics.close);
+    if (!cellMetrics) return null;
+    const open = typeof cellMetrics.open === 'string' ? parseFloat(cellMetrics.open) : cellMetrics.open;
+    const close = typeof cellMetrics.close === 'string' ? parseFloat(cellMetrics.close) : cellMetrics.close;
     if (close > open)
       return <UpArrow className="w-3 h-3 sm:w-4 sm:h-4 text-green-700" />;
     if (close < open)
@@ -123,11 +127,11 @@ const CalendarCell: React.FC<Props> = ({ day,
   };
 
   const renderVolumeDot = () => {
-    if (!metrics || !metrics.volume) return null;
+    if (!cellMetrics || !cellMetrics.volume) return null;
     const volumeStr =
-      typeof metrics.volume === "string"
-        ? metrics.volume.replace("B", "")
-        : String(metrics.volume);
+      typeof cellMetrics.volume === "string"
+        ? cellMetrics.volume.replace("B", "")
+        : String(cellMetrics.volume);
     const volumeNum = parseFloat(volumeStr);
 
     let sizeClass = "w-2 h-2";
@@ -136,15 +140,15 @@ const CalendarCell: React.FC<Props> = ({ day,
 
     return (
       <div
-        title={`Volume: ${metrics.volume}`}
+        title={`Volume: ${cellMetrics.volume}`}
         className={`absolute bottom-2 right-2 rounded-full bg-blue-600 ${sizeClass} flex items-center justify-center`}
       />
     );
   };
 
   const renderLiquidityOverlay = () => {
-    if (!metrics || !metrics.liquidity) return null;
-    const liquidityValue = metrics.liquidity;
+    if (!cellMetrics || !cellMetrics.liquidity) return null;
+    const liquidityValue = cellMetrics.liquidity;
 
     if (liquidityValue < 0.1) return null;
 
@@ -165,7 +169,7 @@ const CalendarCell: React.FC<Props> = ({ day,
   };
 
   let background: string | undefined;
-  const liquidityValue = metrics?.liquidity;
+  const liquidityValue = cellMetrics?.liquidity;
 
   if (typeof liquidityValue === "number") {
 
@@ -179,7 +183,7 @@ const CalendarCell: React.FC<Props> = ({ day,
     onClick();
     setFocusedDate(key);
     
-    if (metrics) {
+    if (cellMetrics) {
       const modalContent = (
         <div className="p-4">
           <h3 className="text-lg font-semibold mb-4">
@@ -188,30 +192,34 @@ const CalendarCell: React.FC<Props> = ({ day,
           <div className="grid gap-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Open:</span>
-              <span>${metrics.open}</span>
+              <span>${cellMetrics.open}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Close:</span>
-              <span>${metrics.close}</span>
+              <span>${cellMetrics.close}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Volume:</span>
-              <span>{metrics.volume}</span>
+              <span>{cellMetrics.volume}</span>
             </div>
-            {metrics.volatility !== undefined && (
+            {cellMetrics.volatility !== undefined && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Volatility:</span>
-                <span>{metrics.volatility}%</span>
+                <span>{
+                  typeof cellMetrics.volatility === 'number' 
+                    ? `${cellMetrics.volatility.toFixed(2)}%` 
+                    : cellMetrics.volatility
+                }</span>
               </div>
             )}
-            {metrics.performance !== undefined && (
+            {(cellMetrics.performance !== undefined && cellMetrics.performance !== null) ? (
               <div className="flex justify-between">
                 <span className="text-gray-600">Performance:</span>
-                <span className={metrics.performance >= 0 ? 'text-green-600' : 'text-red-600'}>
-                  {metrics.performance >= 0 ? '↑' : '↓'} {Math.abs(metrics.performance)}%
+                <span className={cellMetrics.performance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {cellMetrics.performance >= 0 ? '↑' : '↓'} {Math.abs(Number(cellMetrics.performance)).toFixed(2)}%
                 </span>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       );
@@ -253,10 +261,10 @@ const CalendarCell: React.FC<Props> = ({ day,
         </div>
       </div>
 
-      {metrics && (
+      {cellMetrics && (
         <>
           {renderLiquidityOverlay()}
-          <Tooltip metrics={metrics} />
+          <Tooltip metrics={cellMetrics} />
           {renderVolumeDot()}
         </>
       )}

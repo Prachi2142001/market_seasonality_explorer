@@ -34,13 +34,26 @@ const Calendar = () => {
     setMetrics,
     selectedDate,
     setSelectedDate,
+    selectedVolatility,
   } = useCalendar();
 
   const { marketData, loading, error } = useMarketData();
+  
+  // Apply volatility filter to market data
+  const filteredMarketData = useMemo(() => {
+    if (!marketData) return [];
+    
+    if (selectedVolatility === 'all') return marketData;
+    
+    return marketData.filter(item => {
+      const volatilityLevel = getVolatilityLevel(item.volatility);
+      return volatilityLevel === selectedVolatility;
+    });
+  }, [marketData, selectedVolatility]);
 
   // Filter and aggregate data based on view mode
   const { filteredData, aggregatedData } = useMemo(() => {
-    if (!marketData || !selectedDate) return { filteredData: [], aggregatedData: [] };
+    if (!filteredMarketData || !selectedDate) return { filteredData: [], aggregatedData: [] };
 
     const currentDate = selectedDate;
     let filtered: any[] = [];
@@ -48,8 +61,7 @@ const Calendar = () => {
 
     switch (viewMode) {
       case "daily":
-        // Show data for the selected date
-        filtered = marketData.filter((item) => {
+        filtered = filteredMarketData.filter((item) => {
           return (
             item.date.getDate() === currentDate.getDate() &&
             item.date.getMonth() === currentDate.getMonth() &&
@@ -62,13 +74,12 @@ const Calendar = () => {
         const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
         const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
 
-        filtered = marketData.filter((item) =>
+        filtered = filteredMarketData.filter((item) =>
           isWithinInterval(item.date, { start: weekStart, end: weekEnd })
         );
 
-
         const weeklyData = aggregateWeeklyMetrics(
-          marketData.filter((item) =>
+          filteredMarketData.filter((item) =>
             isWithinInterval(item.date, {
               start: startOfMonth(weekStart),
               end: endOfMonth(weekEnd),
@@ -90,13 +101,11 @@ const Calendar = () => {
         const monthEnd = endOfMonth(monthStart);
 
 
-        filtered = marketData.filter((item) =>
+        filtered = filteredMarketData.filter((item) =>
           isWithinInterval(item.date, { start: monthStart, end: monthEnd })
         );
-
-
         aggregated = aggregateMonthlyMetrics(
-          marketData.filter((item) => item.date.getFullYear() === currentDate.getFullYear())
+          filteredMarketData.filter((item) => item.date.getFullYear() === currentDate.getFullYear())
         );
 
 
@@ -109,7 +118,7 @@ const Calendar = () => {
     }
 
     return { filteredData: filtered, aggregatedData: aggregated };
-  }, [marketData, viewMode, selectedDate]);
+  }, [filteredMarketData, viewMode, selectedDate]);
 
   useEffect(() => {
     if (filteredData.length > 0) {
@@ -125,7 +134,6 @@ const Calendar = () => {
           volume: item.volume,
           volatility: item.volatility,
           performance: item.performance,
-          // Add aggregated data for the period if available
           aggregated: aggregatedData[0] || null,
         });
       });
@@ -155,12 +163,12 @@ const Calendar = () => {
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
   useEffect(() => {
-    if (marketData && marketData.length > 0) {
+    if (filteredMarketData && filteredMarketData.length > 0) {
       const tempVolatility = new Map<string, VolatilityLevel>();
       const tempMetrics = new Map<string, any>();
       const tempMetricsConverted = new Map<string, any>();
 
-      marketData.forEach((data) => {
+      filteredMarketData.forEach((data) => {
         const dateKey = data.date.toDateString();
         tempVolatility.set(dateKey, getVolatilityLevel(data.volatility));
         tempMetrics.set(dateKey, data);
@@ -175,22 +183,24 @@ const Calendar = () => {
       setVolatilityMap(tempVolatility);
       setMetrics(Array.from(tempMetrics.values()));
       setMetricsMap(tempMetricsConverted);
+    } else {
+      // Clear the metrics if no data matches the filter
+      setVolatilityMap(new Map());
+      setMetrics([]);
+      setMetricsMap(new Map());
     }
-  }, [marketData, setMetrics, setMetricsMap, setVolatilityMap]);
+  }, [filteredMarketData, setMetrics, setMetricsMap, setVolatilityMap]);
 
-  // Generate all days in the current view based on viewMode
   const allDays = useMemo(() => {
     const days = [];
     let current = new Date(startDate);
 
     if (viewMode === "monthly") {
-      // For monthly view, show all days in the month
       while (current <= endDate) {
         days.push(new Date(current));
         current = addDays(current, 1);
       }
     } else if (viewMode === "weekly") {
-      // For weekly view, show only the current week
       const weekStart = startOfWeek(currentMonth, { weekStartsOn: 0 });
       const weekEnd = endOfWeek(currentMonth, { weekStartsOn: 0 });
       current = new Date(weekStart);
@@ -200,7 +210,7 @@ const Calendar = () => {
         current = addDays(current, 1);
       }
     } else {
-      // For daily view, show only the selected day or today
+
       const dayToShow = selectedDate || currentMonth;
       days.push(dayToShow);
     }
