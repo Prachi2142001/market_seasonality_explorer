@@ -1,40 +1,44 @@
 # 📈 Market Seasonality Explorer
 
 ## 🚀 Overview
-Market Seasonality Explorer is an interactive React-based dashboard for visualizing historical volatility, liquidity, and performance metrics across daily, weekly, and monthly timeframes. It is designed to help users identify market patterns and make data-informed decisions.
+**Market Seasonality Explorer** is an interactive, calendar-based React dashboard that visualizes historical market patterns across different timeframes (daily, weekly, monthly). It helps users analyze metrics like volatility, liquidity, and performance using intuitive heatmaps, symbols, and chart breakdowns.
 
 ## 🔧 Tech Stack
-- **Framework**: Next.js 14 with TypeScript
+- **Framework**: Next.js 14 (App Router) with TypeScript
 - **Styling**: Tailwind CSS
-- **Charts**: Recharts
-- **Utilities**: date-fns, Framer Motion
+- **Charting**: Recharts
+- **Date Utilities**: date-fns
+- **Animation**: Framer Motion
+- **Exporting**: html2canvas, jsPDF
 - **State Management**: React Context API
-- **Data**: Mocked JSON & Live Orderbook from Binance API
+- **Data Source**: Mocked JSON + Live Orderbook from Binance API
+- **Testing**: Jest & React Testing Library
+
+---
 
 ## 🧩 Features
 
-### ✅ Core Features
-- Custom interactive calendar (daily/weekly/monthly)
-- Volatility heatmap with color gradients
-- Liquidity stripes/dots within calendar cells
-- Performance arrows (📈 up / 📉 down)
-- Responsive & keyboard accessible
-- Click-to-view modal with detailed chart
-- Side Dashboard Panel with metric breakdown
+### ✅ Core Functionalities
+- Custom interactive calendar views: **Daily**, **Weekly**, **Monthly**
+- Volatility **heatmap** (color-coded)
+- Liquidity indicators (gradient stripes/dots inside cells)
+- Performance arrows (📈 bullish / 📉 bearish)
+- Clickable cells with modal chart breakdown
+- Tooltip on hover for quick data insight
+- Keyboard accessible navigation
+- Side Dashboard panel for detailed metric breakdown
+- Real-time **Binance Orderbook** data integration
+- Export options (PDF/CSV/Image) – In Progress
+- Zooming & Date Range Selection
+- Mobile-responsive UI and touch-optimized modals
 
-### ⚠️ In Progress / Partial Features
-- Date range selection (UI done, logic pending)
-- Metric filters (UX placeholder present)
-- Zoom functionality (planned)
-- Export (PDF/CSV/Image): To be finalized
-- Real Binance orderbook fetching: Connected
+---
 
-## 📦 How to Run Locally
+## 🖥️ How to Run Locally
 
+1. Clone the repository:
 ```bash
 git clone https://github.com/your-username/market-seasonality-explorer.git
 cd market-seasonality-explorer
-npm install
-npm run dev
-![fix the width of the cell for daily view
-](image.png)
+
+
