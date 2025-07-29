@@ -301,11 +301,11 @@ const Calendar = () => {
         </div>
       </div>
       <ExportControls
-        data={filteredMarketData}
-        elementId="export-area"
-        fileName="market-data"
-        className="your-custom-classes"
-      />
+  data={filteredMarketData}
+  elementId="export-area"
+  fileName="market-data"
+  className="your-custom-classes"
+/>
     </div>
   );
 };
