@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   startOfMonth,
   endOfMonth,
@@ -7,7 +8,6 @@ import {
   endOfWeek,
   addDays,
   isSameMonth,
-  format,
   isToday,
   isSameDay,
   isWithinInterval,
@@ -25,7 +25,11 @@ import { getVolatilityLevel } from "@/utils/helpers";
 import { aggregateWeeklyMetrics, aggregateMonthlyMetrics } from "@/utils/aggregate";
 import ExportControls from "./ExportControls";
 
-const Calendar = () => {
+interface CalendarProps {
+  selectedMetrics: string[];
+}
+
+const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
   const {
     currentMonth,
     setMetricsMap,
@@ -37,84 +41,107 @@ const Calendar = () => {
     setSelectedDate,
     selectedVolatility,
   } = useCalendar();
-
+  const [rangeStart, setRangeStart] = useState<Date | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const { marketData, loading, error } = useMarketData();
+
   const filteredMarketData = useMemo(() => {
     if (!marketData) return [];
-
-    if (selectedVolatility === 'all') return marketData;
-
     return marketData.filter(item => {
-      const volatilityLevel = getVolatilityLevel(item.volatility);
-      return volatilityLevel === selectedVolatility;
+      if (selectedVolatility !== 'all') {
+        const volatilityLevel = getVolatilityLevel(item.volatility);
+        if (volatilityLevel !== selectedVolatility) return false;
+      }
+      if (selectedMetrics.length > 0) {
+        const hasSelectedMetrics = selectedMetrics.some(metric => {
+          switch (metric) {
+            case 'volatility':
+              return item.volatility !== undefined && item.volatility !== null;
+            case 'liquidity':
+              return item.volume !== undefined && item.volume !== null;
+            case 'performance':
+              return item.performance !== undefined && item.performance !== null;
+            default:
+              return false;
+          }
+        });
+        if (!hasSelectedMetrics) return false;
+      }
+      return true;
     });
-  }, [marketData, selectedVolatility]);
+  }, [marketData, selectedVolatility, selectedMetrics]);
+
+  const rangeSummary = useMemo(() => {
+    if (!rangeStart || !rangeEnd) return null;
+    const start = rangeStart.getTime();
+    const end = rangeEnd.getTime();
+    const rangeData = filteredMarketData.filter(entry => {
+      const time = new Date(entry.date).getTime();
+      return time >= start && time <= end;
+    });
+    const totalVolume = rangeData.reduce((sum, d) => sum + (d.volume || 0), 0);
+    const avgVolatility = rangeData.reduce((sum, d) => sum + (d.volatility || 0), 0) / (rangeData.length || 1);
+    const avgPerformance = rangeData.reduce((sum, d) => sum + (d.performance || 0), 0) / (rangeData.length || 1);
+    const totalLiquidity = rangeData.reduce((sum, d) => sum + (d.liquidity || 0), 0);
+    return {
+      count: rangeData.length,
+      totalVolume,
+      avgVolatility: avgVolatility.toFixed(2),
+      avgPerformance: avgPerformance.toFixed(2),
+      totalLiquidity,
+    };
+  }, [rangeStart, rangeEnd, filteredMarketData]);
 
   const { filteredData, aggregatedData } = useMemo(() => {
     if (!filteredMarketData || !selectedDate) return { filteredData: [], aggregatedData: [] };
-
     const currentDate = selectedDate;
     let filtered: any[] = [];
     let aggregated: any[] = [];
 
     switch (viewMode) {
       case "daily":
-        filtered = filteredMarketData.filter((item) => {
-          return (
-            item.date.getDate() === currentDate.getDate() &&
-            item.date.getMonth() === currentDate.getMonth() &&
-            item.date.getFullYear() === currentDate.getFullYear()
-          );
-        });
+        filtered = filteredMarketData.filter(item =>
+          item.date.getDate() === currentDate.getDate() &&
+          item.date.getMonth() === currentDate.getMonth() &&
+          item.date.getFullYear() === currentDate.getFullYear()
+        );
         break;
-
       case "weekly": {
         const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
         const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
-
-        filtered = filteredMarketData.filter((item) =>
+        filtered = filteredMarketData.filter(item =>
           isWithinInterval(item.date, { start: weekStart, end: weekEnd })
         );
-
         const weeklyData = aggregateWeeklyMetrics(
-          filteredMarketData.filter((item) =>
+          filteredMarketData.filter(item =>
             isWithinInterval(item.date, {
               start: startOfMonth(weekStart),
               end: endOfMonth(weekEnd),
             })
           )
         );
-
-
-        aggregated = weeklyData.filter((week) =>
+        aggregated = weeklyData.filter(week =>
           isWithinInterval(currentDate, { start: week.periodStart, end: week.periodEnd })
         );
         break;
       }
-
       case "monthly":
       default: {
-
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(monthStart);
-
-
-        filtered = filteredMarketData.filter((item) =>
+        filtered = filteredMarketData.filter(item =>
           isWithinInterval(item.date, { start: monthStart, end: monthEnd })
         );
         aggregated = aggregateMonthlyMetrics(
-          filteredMarketData.filter((item) => item.date.getFullYear() === currentDate.getFullYear())
+          filteredMarketData.filter(item => item.date.getFullYear() === currentDate.getFullYear())
         );
-
-
-        aggregated = aggregated.filter((month) =>
+        aggregated = aggregated.filter(month =>
           month.periodStart.getMonth() === currentDate.getMonth() &&
           month.periodStart.getFullYear() === currentDate.getFullYear()
         );
         break;
       }
     }
-
     return { filteredData: filtered, aggregatedData: aggregated };
   }, [filteredMarketData, viewMode, selectedDate]);
 
@@ -122,8 +149,7 @@ const Calendar = () => {
     if (filteredData.length > 0) {
       const tempVolatility = new Map<string, VolatilityLevel>();
       const tempMetrics = new Map<string, any>();
-
-      filteredData.forEach((item) => {
+      filteredData.forEach(item => {
         const dateKey = item.date.toDateString();
         tempVolatility.set(dateKey, getVolatilityLevel(item.volatility));
         tempMetrics.set(dateKey, {
@@ -135,18 +161,12 @@ const Calendar = () => {
           aggregated: aggregatedData[0] || null,
         });
       });
-
       setVolatilityMap(tempVolatility);
       setMetricsMap(tempMetrics);
       setMetrics(filteredData);
     }
-  }, [
-    filteredData,
-    aggregatedData,
-    setVolatilityMap,
-    setMetricsMap,
-    setMetrics,
-  ]);
+  }, [filteredData, aggregatedData, setVolatilityMap, setMetricsMap, setMetrics]);
+
   useEffect(() => {
     if (!selectedDate) {
       setSelectedDate(new Date());
@@ -169,8 +189,7 @@ const Calendar = () => {
       const tempVolatility = new Map<string, VolatilityLevel>();
       const tempMetrics = new Map<string, any>();
       const tempMetricsConverted = new Map<string, any>();
-
-      filteredMarketData.forEach((data) => {
+      filteredMarketData.forEach(data => {
         const dateKey = data.date.toDateString();
         tempVolatility.set(dateKey, getVolatilityLevel(data.volatility));
         tempMetrics.set(dateKey, data);
@@ -181,12 +200,10 @@ const Calendar = () => {
           volatility: data.volatility,
         });
       });
-
       setVolatilityMap(tempVolatility);
       setMetrics(Array.from(tempMetrics.values()));
       setMetricsMap(tempMetricsConverted);
     } else {
-
       setVolatilityMap(new Map());
       setMetrics([]);
       setMetricsMap(new Map());
@@ -196,7 +213,6 @@ const Calendar = () => {
   const allDays = useMemo(() => {
     const days = [];
     let current = new Date(startDate);
-
     if (viewMode === "monthly") {
       while (current <= endDate) {
         days.push(new Date(current));
@@ -206,17 +222,14 @@ const Calendar = () => {
       const weekStart = startOfWeek(currentMonth, { weekStartsOn: 0 });
       const weekEnd = endOfWeek(currentMonth, { weekStartsOn: 0 });
       current = new Date(weekStart);
-
       while (current <= weekEnd) {
         days.push(new Date(current));
         current = addDays(current, 1);
       }
     } else {
-
       const dayToShow = selectedDate || currentMonth;
       days.push(dayToShow);
     }
-
     return days;
   }, [startDate, endDate, viewMode, currentMonth, selectedDate]);
 
@@ -247,6 +260,19 @@ const Calendar = () => {
     );
   }
 
+  const handleDateClick = (clickedDate: Date) => {
+    if (!rangeStart || (rangeStart && rangeEnd)) {
+      setRangeStart(clickedDate);
+      setRangeEnd(null);
+    } else if (rangeStart && !rangeEnd) {
+      if (clickedDate < rangeStart) {
+        setRangeStart(clickedDate);
+      } else {
+        setRangeEnd(clickedDate);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-white rounded-lg shadow-sm" id="calendar-container">
       <div className="sticky top-0 bg-white z-10 border-b border-gray-100 p-4">
@@ -255,57 +281,111 @@ const Calendar = () => {
 
       <div className="flex-1 overflow-auto p-2 sm:p-4">
         <div id="export-area" className="w-full">
-          <div className="grid grid-cols-7 gap-2 w-full min-w-[360px]">
-            {viewMode !== "daily" && (
-              ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (
-                <div
-                  key={day}
-                  className="text-xs font-medium text-center py-3 text-gray-500 uppercase tracking-wider"
-                >
-                  {day}
-                </div>
-              ))
-            )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={viewMode + selectedDate?.toDateString()}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              transition={{ duration: 0.25 }}
+              className="grid grid-cols-7 gap-2 w-full min-w-[360px]"
+            >
+              {viewMode !== "daily" &&
+                ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(day => (
+                  <div
+                    key={day}
+                    className="text-xs font-medium text-center py-3 text-gray-500 uppercase tracking-wider"
+                  >
+                    {day}
+                  </div>
+                ))}
 
-            {allDays.map((day) => {
-              const dateKey = day.toDateString();
-              const isCurrentMonth = isSameMonth(day, currentMonth);
-              const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
-              const isTodayDate = isToday(day);
-              const hasData = filteredData.some(item => isSameDay(item.date, day));
+              {allDays.map(day => {
+                const dateKey = day.toDateString();
+                const isCurrentMonth = isSameMonth(day, currentMonth);
+                const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+                const isTodayDate = isToday(day);
+                const hasData = filteredData.some(item => isSameDay(item.date, day));
+                const isInRange = rangeStart && rangeEnd && day >= rangeStart && day <= rangeEnd;
+                const isSelectedStart = rangeStart && day.getTime() === rangeStart.getTime();
+                const isSelectedEnd = rangeEnd && day.getTime() === rangeEnd.getTime();
 
-              return (
-                <div
-                  key={dateKey}
-                  className={clsx("relative transition-colors duration-150 group", {
-                    "col-span-7 w-full min-h-[120px] sm:min-h-[160px]": viewMode === "daily",
-                    "min-h-[80px] sm:min-h-[100px] rounded-md overflow-visible": viewMode !== "daily",
-                    "opacity-60": !isCurrentMonth && viewMode !== "daily",
-                    "hover:bg-gray-50 cursor-pointer": !isSelected && viewMode !== "daily",
-                  })}
-                >
-                  <CalendarCell
-                    day={day}
-                    isCurrentMonth={isCurrentMonth}
-                    isSelected={isSelected}
-                    isDayToday={isTodayDate}
-                    onClick={() => setSelectedDate(day)}
-                    metrics={filteredData.find(item => isSameDay(item.date, day))}
-                    viewMode={viewMode}
-                    hasData={hasData}
-                  />
-                </div>
-              );
-            })}
-          </div>
+                return (
+                  <div
+                    key={dateKey}
+                    className={clsx("relative transition-colors duration-150 group", {
+                      "col-span-7 w-full min-h-[120px] sm:min-h-[160px]": viewMode === "daily",
+                      "min-h-[80px] sm:min-h-[100px] rounded-md overflow-visible": viewMode !== "daily",
+                      "opacity-60": !isCurrentMonth && viewMode !== "daily",
+                      "cursor-pointer": !isSelected && viewMode !== "daily",
+                      "bg-yellow-300": isInRange,
+                      "border-l-4 border-blue-500": isSelectedStart,
+                      "border-r-4 border-blue-500": isSelectedEnd,
+                    })}
+                    onClick={() => handleDateClick(day)}
+                  >
+                    <CalendarCell
+                      day={day}
+                      isCurrentMonth={isCurrentMonth}
+                      isSelected={isSelected}
+                      isDayToday={isTodayDate}
+                      onClick={() => handleDateClick(day)}
+                      metrics={filteredData.find(item => isSameDay(item.date, day))}
+                      viewMode={viewMode}
+                      hasData={hasData}
+                    />
+                  </div>
+                );
+              })}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
+
+      {rangeStart && rangeEnd && rangeSummary && (
+        <div className="p-4 bg-white shadow rounded mt-4 text-sm text-gray-700">
+          <div>
+            <strong>{rangeStart.toDateString()}</strong> to <strong>{rangeEnd.toDateString()}</strong>
+          </div>
+          <div className="mt-2 flex flex-row flex-wrap justify-between">
+            <div>
+            Data points: <strong>{rangeSummary.count}</strong><br />
+            {selectedMetrics.includes("volatility") && (
+              <>Avg Volatility: <strong>{rangeSummary.avgVolatility}</strong><br /></>
+            )}
+            {selectedMetrics.includes("liquidity") && (
+              <>Total Liquidity: <strong>{rangeSummary.totalLiquidity.toLocaleString()}</strong><br /></>
+            )}
+            {selectedMetrics.includes("performance") && (
+              <>Avg Performance: <strong>{rangeSummary.avgPerformance}</strong><br /></>
+            )}
+            {selectedMetrics.includes("liquidity") && selectedMetrics.length === 1 && (
+              <>Total Volume: <strong>{rangeSummary.totalVolume.toLocaleString()}</strong><br /></>
+            )}
+            </div>
+            <div>
+            <button
+            onClick={() => {
+              setRangeStart(null);
+              setRangeEnd(null);
+            }}
+            className="mt-10 w-full sm:w-auto px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-500 rounded-md hover:bg-indigo-100 hover:text-indigo-700 transition duration-200 text-center"
+          >
+            Clear Selection
+          </button>
+          </div>
+          </div>
+          
+
+        </div>
+      )}
+
       <ExportControls
-  data={filteredMarketData}
-  elementId="export-area"
-  fileName="market-data"
-  className="your-custom-classes"
-/>
+        data={filteredMarketData}
+        elementId="export-area"
+        fileName="market-data"
+        className="your-custom-classes"
+      />
     </div>
   );
 };

@@ -30,7 +30,7 @@ type Props = {
   isDayToday: boolean;
   onClick: () => void;
   aggregated?: AggregatedMetrics;
-  metrics?: any; 
+  metrics?: any;
   viewMode?: 'daily' | 'weekly' | 'monthly';
   hasData?: boolean;
 };
@@ -40,7 +40,7 @@ const CalendarCell: React.FC<Props> = ({
   isCurrentMonth,
   isSelected,
   isDayToday,
-  onClick,  
+  onClick,
   metrics,
   viewMode = 'daily'
 }) => {
@@ -146,6 +146,21 @@ const CalendarCell: React.FC<Props> = ({
     );
   };
 
+  const renderVolatilityRangeBar = () => {
+    if (!cellMetrics?.volatilityRange) return null;
+  
+    const range = cellMetrics.volatilityRange;
+    const normalized = Math.min(100, Math.max(0, range));
+    const barHeight = `${Math.min(100, normalized)}%`;
+  
+    return (
+      <div className="absolute left-1 bottom-1 w-1.5 bg-purple-500 rounded"
+           style={{ height: barHeight }}
+           title={`Intraday Range: ${range.toFixed(2)}%`}
+      />
+    );
+  };
+  
   const renderLiquidityOverlay = () => {
     if (!cellMetrics || !cellMetrics.liquidity) return null;
     const liquidityValue = cellMetrics.liquidity;
@@ -182,7 +197,7 @@ const CalendarCell: React.FC<Props> = ({
     e.stopPropagation();
     onClick();
     setFocusedDate(key);
-    
+
     if (cellMetrics) {
       const modalContent = (
         <div className="p-4">
@@ -206,8 +221,8 @@ const CalendarCell: React.FC<Props> = ({
               <div className="flex justify-between">
                 <span className="text-gray-600">Volatility:</span>
                 <span>{
-                  typeof cellMetrics.volatility === 'number' 
-                    ? `${cellMetrics.volatility.toFixed(2)}%` 
+                  typeof cellMetrics.volatility === 'number'
+                    ? `${cellMetrics.volatility.toFixed(2)}%`
                     : cellMetrics.volatility
                 }</span>
               </div>
@@ -220,6 +235,12 @@ const CalendarCell: React.FC<Props> = ({
                 </span>
               </div>
             ) : null}
+            {cellMetrics.volatilityRange !== undefined && (
+  <div className="flex justify-between">
+    <span className="text-gray-600">Intraday Range:</span>
+    <span>{cellMetrics.volatilityRange.toFixed(2)}%</span>
+  </div>
+)}
           </div>
         </div>
       );
@@ -254,18 +275,27 @@ const CalendarCell: React.FC<Props> = ({
     >
       <div className="absolute inset-0 flex flex-col p-1">
         <div className="flex justify-between items-start">
-          <button className={clsx("font-bold text-red-700", isDayToday && "text-blue-700")} onClick={() => openModal}>
+          <div
+            className={clsx(
+              "w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm",
+              isDayToday
+                ? "bg-blue-100 border-2 border-blue-500 rounded-full font-bold text-blue-700"
+                : "text-red-700 font-bold"
+            )}
+          >
             {formattedDate}
-          </button>
+          </div>
           {metrics && renderPerformanceIcon()}
         </div>
+
       </div>
 
       {cellMetrics && (
         <>
           {renderLiquidityOverlay()}
+          {renderVolatilityRangeBar()}
           <Tooltip metrics={cellMetrics} />
-             {renderVolumeDot()}
+          {renderVolumeDot()}
         </>
       )}
     </div>

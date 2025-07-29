@@ -25,6 +25,8 @@ export type CalendarMetrics = {
   liquidity?: number;
   performance: number;
   high: number; 
-  low: number;  
+  low: number;
+  volatilityRange?: number;
+  
 };
 export type ViewMode = "monthly" | "weekly" | "daily";

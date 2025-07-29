@@ -27,6 +27,8 @@ type CalendarContextType = CalendarState & {
   setMetrics: React.Dispatch<React.SetStateAction<CalendarMetrics[]>>;
   selectedDate: Date | null;
   setSelectedDate: (date: Date | null) => void;
+  selectedMetrics: string[];                  
+  setSelectedMetrics: (metrics: string[]) => void;
 };
 
 const CalendarContext = createContext<CalendarContextType | undefined>(
@@ -53,7 +55,8 @@ export const CalendarProvider = ({
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["volatility", "volume", "performance"]);
+
 
   const openModal = (content: React.ReactNode) => {
     setModalContent(content);
@@ -97,6 +100,8 @@ export const CalendarProvider = ({
         setMetrics,
         selectedDate,
   setSelectedDate,
+  selectedMetrics,         
+  setSelectedMetrics, 
       }}
     >
       {children}

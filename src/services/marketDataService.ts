@@ -1,9 +1,10 @@
 import { subYears, startOfDay, endOfDay, format } from 'date-fns';
 import { fetchHistoricalData, KlineData } from './api/binance';
 import { CalendarMetrics, VolatilityLevel } from '@/types';
+import { calculateIntradayVolatilityRange } from '@/utils/volatility';
 
 const calculateVolatility = (high: number, low: number): number => {
-  return (high - low) / low; 
+  return (high - low) / low;
 };
 
 const getVolatilityLevel = (volatility: number): VolatilityLevel => {
@@ -23,7 +24,7 @@ export const fetchMarketData = async (
   try {
     const endDate = new Date();
     const startDate = subYears(endDate, 1);
-    
+
     const klines = await fetchHistoricalData(symbol, '1d', startDate, endDate);
     const metrics: CalendarMetrics[] = klines.map(kline => {
       const open = parseFloat(kline.open);
@@ -32,14 +33,19 @@ export const fetchMarketData = async (
       const close = parseFloat(kline.close);
       const volume = parseFloat(kline.volume);
       const volatility = calculateVolatility(high, low);
-      
+      const volatilityRange = calculateIntradayVolatilityRange(kline);
+      const performance = calculatePerformance(open, close);
+
       return {
         date: new Date(kline.openTime),
         open,
+        high,
+        low,  
         close,
         volume,
         volatility,
-        performance: calculatePerformance(open, close),
+        performance,
+        volatilityRange,
       };
     });
 
@@ -68,7 +74,7 @@ export const getDataForDateRange = (
 ): CalendarMetrics[] => {
   const start = startOfDay(startDate).getTime();
   const end = endOfDay(endDate).getTime();
-  
+
   return data.filter(item => {
     const itemTime = item.date.getTime();
     return itemTime >= start && itemTime <= end;

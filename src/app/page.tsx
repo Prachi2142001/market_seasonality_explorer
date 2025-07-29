@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useMarketData } from "@/context/MarketDataContext";
 import { useCalendar } from "@/context/CalendarContext";
 import { Calendar as CalendarIcon, RefreshCw, AlertCircle } from "lucide-react";
+import FilterControls from "@/components/FilterControls";
 
 
 const Calendar = dynamic(() => import("@/components/Calendar"), { ssr: false });
@@ -21,6 +22,9 @@ export default function Home() {
   const { loading, error, selectedSymbol, setSelectedSymbol, refreshData } = useMarketData();
   const { viewMode, setViewMode } = useCalendar();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedInstrument, setSelectedInstrument] = useState("BTC/USDT");
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["volatility"]);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<"daily" | "weekly" | "monthly">("monthly");
 
   const handleRefresh = async () => {
     try {
@@ -41,7 +45,7 @@ export default function Home() {
               <h2 className="font-semibold text-gray-900 mt-2">Market Seasonality Explorer</h2>
             </div>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
               <label htmlFor="symbol" className="text-center block text-sm font-medium text-gray-700 mb-1">
@@ -66,25 +70,22 @@ export default function Home() {
               <div className="flex rounded-md shadow-sm">
                 <button
                   onClick={() => setViewMode('daily')}
-                  className={`px-3 py-1 text-sm rounded-l-md cursor-pointer ${
-                    viewMode === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                  className={`px-3 py-1 text-sm rounded-l-md cursor-pointer ${viewMode === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
                 >
                   Daily
                 </button>
                 <button
                   onClick={() => setViewMode('weekly')}
-                  className={`px-3 py-1 text-sm cursor-pointer ${
-                    viewMode === 'weekly' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                  className={`px-3 py-1 text-sm cursor-pointer ${viewMode === 'weekly' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
                 >
                   Weekly
                 </button>
                 <button
                   onClick={() => setViewMode('monthly')}
-                  className={`px-3 py-1 text-sm rounded-r-md cursor-pointer  ${
-                    viewMode === 'monthly' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                  className={`px-3 py-1 text-sm rounded-r-md cursor-pointer  ${viewMode === 'monthly' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
                 >
                   Monthly
                 </button>
@@ -126,7 +127,21 @@ export default function Home() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
             </div>
           ) : (
-            <Calendar />
+            <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
+              <div className="flex-grow overflow-auto">
+          
+                  <FilterControls
+                    selectedMetrics={selectedMetrics}
+                    setSelectedMetrics={setSelectedMetrics}
+                  />
+
+                  <Calendar
+                    selectedMetrics={selectedMetrics}
+                  />
+          
+              </div>
+            </div>
+
           )}
         </div>
       </div>
