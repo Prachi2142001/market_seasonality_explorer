@@ -16,13 +16,14 @@ import CalendarHeader from "./CalendarHeader";
 import CalendarCell from "./CalendarCell";
 import { useCalendar } from "@/context/CalendarContext";
 import { useMarketData } from "@/context/MarketDataContext";
-import { ViewMode, VolatilityLevel } from "@/types";
+import { VolatilityLevel } from "@/types";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { clsx } from "clsx";
 import { getVolatilityLevel } from "@/utils/helpers";
 import { aggregateWeeklyMetrics, aggregateMonthlyMetrics } from "@/utils/aggregate";
+import ExportControls from "./ExportControls";
 
 const Calendar = () => {
   const {
@@ -38,20 +39,17 @@ const Calendar = () => {
   } = useCalendar();
 
   const { marketData, loading, error } = useMarketData();
-  
-  // Apply volatility filter to market data
   const filteredMarketData = useMemo(() => {
     if (!marketData) return [];
-    
+
     if (selectedVolatility === 'all') return marketData;
-    
+
     return marketData.filter(item => {
       const volatilityLevel = getVolatilityLevel(item.volatility);
       return volatilityLevel === selectedVolatility;
     });
   }, [marketData, selectedVolatility]);
 
-  // Filter and aggregate data based on view mode
   const { filteredData, aggregatedData } = useMemo(() => {
     if (!filteredMarketData || !selectedDate) return { filteredData: [], aggregatedData: [] };
 
@@ -149,13 +147,17 @@ const Calendar = () => {
     setMetricsMap,
     setMetrics,
   ]);
-
-  // Set initial selected date to today if not set
   useEffect(() => {
     if (!selectedDate) {
       setSelectedDate(new Date());
     }
   }, [selectedDate, setSelectedDate]);
+
+  useEffect(() => {
+    if (viewMode === "daily") {
+      setSelectedDate(new Date());
+    }
+  }, [viewMode]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
@@ -184,7 +186,7 @@ const Calendar = () => {
       setMetrics(Array.from(tempMetrics.values()));
       setMetricsMap(tempMetricsConverted);
     } else {
-      // Clear the metrics if no data matches the filter
+
       setVolatilityMap(new Map());
       setMetrics([]);
       setMetricsMap(new Map());
@@ -246,51 +248,64 @@ const Calendar = () => {
   }
 
   return (
-    <div className="flex flex-col h-full w-full overflow-x-hidden">
-      <div className="sticky top-0 bg-white z-10 shadow-sm p-4">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-white rounded-lg shadow-sm" id="calendar-container">
+      <div className="sticky top-0 bg-white z-10 border-b border-gray-100 p-4">
         <CalendarHeader />
       </div>
 
-      <div className="flex-1 overflow-auto p-1 sm:p-2">
-        <div className="grid grid-cols-7 gap-1 w-full min-w-[360px]">
-          {viewMode !== "daily" && (
-            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="text-xs sm:text-sm font-medium text-center py-1 sm:py-2 truncate">
-                {day}
-              </div>
-            ))
-          )}
+      <div className="flex-1 overflow-auto p-2 sm:p-4">
+        <div id="export-area" className="w-full">
+          <div className="grid grid-cols-7 gap-2 w-full min-w-[360px]">
+            {viewMode !== "daily" && (
+              ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => (
+                <div
+                  key={day}
+                  className="text-xs font-medium text-center py-3 text-gray-500 uppercase tracking-wider"
+                >
+                  {day}
+                </div>
+              ))
+            )}
 
-          {allDays.map((day) => {
-            const dateKey = day.toDateString();
-            const isCurrentMonth = isSameMonth(day, currentMonth);
-            const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
-            const isTodayDate = isToday(day);
+            {allDays.map((day) => {
+              const dateKey = day.toDateString();
+              const isCurrentMonth = isSameMonth(day, currentMonth);
+              const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+              const isTodayDate = isToday(day);
+              const hasData = filteredData.some(item => isSameDay(item.date, day));
 
-            return (
-              <div
-                key={dateKey}
-                className={clsx({
-                  "col-span-7 w-full h-24 sm:h-32": viewMode === "daily",
-                  "h-16 sm:h-20": viewMode !== "daily",
-                  "opacity-40": !isCurrentMonth && viewMode !== "daily",
-                  "min-w-0 flex": true,
-                })}
-              >
-                <CalendarCell
-                  day={day}
-                  isCurrentMonth={isCurrentMonth}
-                  isSelected={isSelected}
-                  isDayToday={isTodayDate}
-                  onClick={() => setSelectedDate(day)}
-                  metrics={filteredData.find(item => isSameDay(item.date, day))}
-                  viewMode={viewMode}
-                />
-              </div>
-            );
-          })}
+              return (
+                <div
+                  key={dateKey}
+                  className={clsx("relative transition-colors duration-150 group", {
+                    "col-span-7 w-full min-h-[120px] sm:min-h-[160px]": viewMode === "daily",
+                    "min-h-[80px] sm:min-h-[100px] rounded-md overflow-visible": viewMode !== "daily",
+                    "opacity-60": !isCurrentMonth && viewMode !== "daily",
+                    "hover:bg-gray-50 cursor-pointer": !isSelected && viewMode !== "daily",
+                  })}
+                >
+                  <CalendarCell
+                    day={day}
+                    isCurrentMonth={isCurrentMonth}
+                    isSelected={isSelected}
+                    isDayToday={isTodayDate}
+                    onClick={() => setSelectedDate(day)}
+                    metrics={filteredData.find(item => isSameDay(item.date, day))}
+                    viewMode={viewMode}
+                    hasData={hasData}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
+      <ExportControls
+        data={filteredMarketData}
+        elementId="export-area"
+        fileName="market-data"
+        className="your-custom-classes"
+      />
     </div>
   );
 };

@@ -45,7 +45,6 @@ export const fetchKlines = async (
 
     const response = await axios.get(`${API_BASE_URL}/klines`, { params });
     
-    // Map response to KlineData interface
     return response.data.map((kline: any[]): KlineData => ({
       openTime: kline[0],
       open: kline[1],
@@ -66,10 +65,6 @@ export const fetchKlines = async (
   }
 };
 
-/**
- * Fetches historical data for a given date range
- * Handles pagination if more than 1000 data points are needed
- */
 export const fetchHistoricalData = async (
   symbol: string = 'BTCUSDT',
   interval: string = '1d',
@@ -95,13 +90,10 @@ export const fetchHistoricalData = async (
 
       allData = [...allData, ...batch];
       
-      // If we got less than the limit, we've reached the end
       if (batch.length < limit) break;
-      
-      // Set next start time to 1ms after the last close time
+    
       currentStart = batch[batch.length - 1].closeTime + 1;
       
-      // Add a small delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 

@@ -24,7 +24,13 @@ const Tooltip: React.FC<TooltipProps> = ({ metrics }) => {
 
   return (
     <div
-      className="absolute z-50 hidden group-hover:block bg-white text-black text-xs sm:text-sm p-4 rounded shadow-lg top-[120%] left-1/2 transform -translate-x-1/2 w-40 sm:w-48 whitespace-nowrap pointer-events-none transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+      className="absolute z-50 bg-white text-black text-xs sm:text-sm p-3 rounded shadow-lg w-40 sm:w-48 whitespace-nowrap pointer-events-none transition-all duration-200 opacity-0 group-hover:opacity-100"
+      style={{
+        top: 'calc(100% + 5px)',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+      }}
       role="tooltip"
     >
       <div className="flex justify-between gap-2">

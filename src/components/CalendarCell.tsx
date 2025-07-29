@@ -31,7 +31,8 @@ type Props = {
   onClick: () => void;
   aggregated?: AggregatedMetrics;
   metrics?: any; 
-  viewMode?: 'daily' | 'weekly' | 'monthly';  // Add this line 
+  viewMode?: 'daily' | 'weekly' | 'monthly';
+  hasData?: boolean;
 };
 
 const CalendarCell: React.FC<Props> = ({
@@ -59,7 +60,6 @@ const CalendarCell: React.FC<Props> = ({
   const isCurrentDay = isToday(day);
   const isFocused = focusedDate === key;
 
-  // Use the metrics prop first, fall back to metricsMap if not available
   const cellMetrics = metrics || metricsMap.get(key);
   const volatility = volatilityMap.get(key) ?? "low";
 
@@ -186,9 +186,9 @@ const CalendarCell: React.FC<Props> = ({
     if (cellMetrics) {
       const modalContent = (
         <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">
+          <h4 className="font-semibold mb-4">
             {format(day, 'EEEE, MMMM d, yyyy')}
-          </h3>
+          </h4>
           <div className="grid gap-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Open:</span>
@@ -244,10 +244,10 @@ const CalendarCell: React.FC<Props> = ({
       onMouseLeave={handleMouseLeave}
       onKeyDown={handleKeyDown}
       className={clsx(
-        "group border p-1 sm:p-2 text-xs sm:text-sm relative ml-12 rounded-md transition duration-300 ease-in-out shadow-sm cursor-pointer focus:outline-none aspect-square h-16 sm:h-20 overflow-visible",
+        "group p-1 sm:p-2 text-xs sm:text-sm relative ml-12 rounded-md transition duration-300 ease-in-out shadow-sm cursor-pointer focus:outline-none aspect-square h-16 sm:h-20 overflow-visible",
         getColorByVolatility(volatility),
         isCurrentMonth ? "text-black" : "text-gray-400 bg-gray-50",
-        isDayToday && "border-2 border-blue-500 font-bold ring-2 ring-blue-400",
+        isDayToday && "ring-2 ring-blue-400 font-bold",
         (isFocused || focusedDate === key) && "ring-2 ring-blue-500 ring-offset-2 z-20",
         !isCurrentMonth && "opacity-60"
       )}
@@ -265,7 +265,7 @@ const CalendarCell: React.FC<Props> = ({
         <>
           {renderLiquidityOverlay()}
           <Tooltip metrics={cellMetrics} />
-          {renderVolumeDot()}
+             {renderVolumeDot()}
         </>
       )}
     </div>

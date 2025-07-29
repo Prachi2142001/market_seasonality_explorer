@@ -14,12 +14,10 @@ export function aggregateWeeklyMetrics(
 ): AggregatedMetrics[] {
   if (metrics.length === 0) return [];
 
-  // Step 1: Sort metrics by date (ascending)
   const sortedMetrics = [...metrics].sort(
     (a, b) => a.date.getTime() - b.date.getTime()
   );
 
-  // Step 2: Determine the overall date range
   const firstDate = startOfWeek(sortedMetrics[0].date, { weekStartsOn: 0 }); // Sunday
   const lastDate = endOfWeek(sortedMetrics[sortedMetrics.length - 1].date, { weekStartsOn: 0 }); // Saturday
 
@@ -29,8 +27,6 @@ export function aggregateWeeklyMetrics(
 
   while (currentWeekStart <= lastDate) {
     const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 0 });
-
-    // Step 3: Filter metrics within this week
     const weekMetrics = sortedMetrics.filter(metric => {
       return metric.date >= currentWeekStart && metric.date <= currentWeekEnd;
     });
@@ -65,7 +61,6 @@ export function aggregateWeeklyMetrics(
       });
     }
 
-    // Move to next week (Sunday of next week)
     currentWeekStart = addDays(currentWeekEnd, 1);
   }
 

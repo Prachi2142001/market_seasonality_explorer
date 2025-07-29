@@ -38,7 +38,7 @@ export default function Home() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center">
               <CalendarIcon className="h-6 w-6 text-indigo-600 mr-2" />
-              <h1 className="text-xl font-semibold text-gray-900">Market Seasonality Explorer</h1>
+              <h2 className="font-semibold text-gray-900 mt-2">Market Seasonality Explorer</h2>
             </div>
           </div>
           
@@ -51,7 +51,7 @@ export default function Home() {
                 id="symbol"
                 value={selectedSymbol}
                 onChange={(e) => setSelectedSymbol(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
               >
                 {SYMBOLS.map((symbol) => (
                   <option key={symbol.value} value={symbol.value}>
