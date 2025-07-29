@@ -291,10 +291,7 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 30 }}
               transition={{ duration: 0.25 }}
-              className={clsx("w-full", {
-                "grid grid-cols-7 gap-1 sm:gap-2 min-w-[300px] sm:min-w-[400px] lg:min-w-[600px]": viewMode !== "daily",
-                "min-w-full": viewMode === "daily",
-              })}
+              className={clsx("w-full grid grid-cols-7 gap-1 sm:gap-2 min-w-[300px] sm:min-w-[400px] lg:min-w-[600px]")}
             >
               {viewMode !== "daily" &&
                 ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(day => (
@@ -320,14 +317,13 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
                 return (
                   <div
                     key={dateKey}
-                    className={clsx("relative transition-colors duration-150 group", {
-                      "col-span-7 w-full min-h-[120px] sm:min-h-[160px] lg:min-h-[200px]": viewMode === "daily",
-                      "min-h-[60px] sm:min-h-[80px] lg:min-h-[100px] rounded-md overflow-visible": viewMode !== "daily",
+                    className={clsx("relative transition-colors duration-150 group min-h-[60px] sm:min-h-[80px] lg:min-h-[100px] rounded-md overflow-visible", {
                       "opacity-60": !isCurrentMonth && viewMode !== "daily",
                       "cursor-pointer": !isSelected && viewMode !== "daily",
                       "bg-yellow-300": isInRange,
                       "border-l-2 sm:border-l-4 border-blue-500": isSelectedStart,
                       "border-r-2 sm:border-r-4 border-blue-500": isSelectedEnd,
+                      "col-span-7 flex justify-center items-center": viewMode === "daily"
                     })}
                     onClick={() => handleDateClick(day)}
                   >
