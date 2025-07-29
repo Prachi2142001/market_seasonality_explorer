@@ -8,6 +8,8 @@ import {
   CalendarMetrics,
 } from "@/types";
 
+type Timeframe = "daily" | "monthly" | "weekly";
+
 type CalendarContextType = CalendarState & {
   setCurrentMonth: (date: Date) => void;
   setMetricsMap: (map: Map<string, Metric>) => void;
@@ -27,8 +29,10 @@ type CalendarContextType = CalendarState & {
   setMetrics: React.Dispatch<React.SetStateAction<CalendarMetrics[]>>;
   selectedDate: Date | null;
   setSelectedDate: (date: Date | null) => void;
-  selectedMetrics: string[];                  
+  selectedMetrics: string[];
   setSelectedMetrics: (metrics: string[]) => void;
+  selectedTimeframe: Timeframe;
+  setTimeframe: (tf: Timeframe) => void;
 };
 
 const CalendarContext = createContext<CalendarContextType | undefined>(
@@ -45,7 +49,7 @@ export const CalendarProvider = ({
   const [volatilityMap, setVolatilityMap] = useState<
     Map<string, VolatilityLevel>
   >(new Map());
-  const [focusedDate, setFocusedDate] = useState<string | null>(null);
+  const [selectedTimeframe, setTimeframe] = useState<Timeframe>("monthly");  const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [selectedVolatility, setSelectedVolatility] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("monthly");
   const cellRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
@@ -99,9 +103,11 @@ export const CalendarProvider = ({
         metrics,
         setMetrics,
         selectedDate,
-  setSelectedDate,
-  selectedMetrics,         
-  setSelectedMetrics, 
+        setSelectedDate,
+        selectedMetrics,
+        setSelectedMetrics,
+        selectedTimeframe,
+        setTimeframe,
       }}
     >
       {children}

@@ -1,15 +1,19 @@
 "use client";
 import React from "react";
 import { useModal } from "@/context/ModalContext";
+import MiniChart from "./MiniChart";
 
 const Modal = () => {
-  const { isOpen, closeModal, content } = useModal();
+  const { isOpen, closeModal, content, selectedDate, calendarData } = useModal();
 
   if (!isOpen) return null;
 
+  // Get last 7 days of data or any fallback
+  const chartData = calendarData?.slice(-7) || [];
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
-      <div 
+      <div
         className="fixed inset-0 bg-black/10 backdrop-blur-sm transition-opacity cursor-pointer"
         onClick={closeModal}
         aria-hidden="true"
@@ -24,8 +28,24 @@ const Modal = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        <div className="max-h-[calc(80vh-3rem)] overflow-y-auto">
+
+        <div className="max-h-[calc(80vh-3rem)] overflow-y-auto space-y-6">
+          {/* Main dynamic content */}
           {content}
+
+          {/* Mini Chart Section */}
+          {selectedDate && chartData.length > 0 && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <h3 className="text-sm font-semibold mb-1 text-gray-700">Price Trend (Last 7 Days)</h3>
+                <MiniChart data={chartData} type="line" metric="close" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-1 text-gray-700">Volume Trend (Last 7 Days)</h3>
+                <MiniChart data={chartData} type="bar" metric="volume" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

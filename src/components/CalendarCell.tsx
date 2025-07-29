@@ -9,17 +9,18 @@ import UpArrow from "@/icons/UpArrow";
 import DownArrow from "@/icons/DownArrow";
 import NeutralDash from "@/icons/NeutralDash";
 import { AggregatedMetrics } from "@/utils/aggregate";
+import MiniChart from "./MiniChart";
 
 const getColorByVolatility = (level: string) => {
   switch (level) {
     case "low":
-      return "bg-green-300";
+      return "bg-green-300 sm:bg-green-300 lg:bg-green-300";
     case "medium":
-      return "bg-amber-300";
+      return "bg-amber-300 sm:bg-amber-300 lg:bg-amber-300";
     case "high":
-      return "bg-red-400";
+      return "bg-red-400 sm:bg-red-400 lg:bg-red-400";
     default:
-      return "bg-gray-200";
+      return "bg-gray-200 sm:bg-gray-200 lg:bg-gray-200";
   }
 };
 
@@ -44,7 +45,8 @@ const CalendarCell: React.FC<Props> = ({
   metrics,
   viewMode = 'daily'
 }) => {
-  const { openModal } = useModal();
+
+  const { openModal, calendarData } = useModal();
   const {
     metricsMap,
     volatilityMap,
@@ -63,9 +65,7 @@ const CalendarCell: React.FC<Props> = ({
   const cellMetrics = metrics || metricsMap.get(key);
   const volatility = volatilityMap.get(key) ?? "low";
 
-
   const cellRef = useRef<HTMLDivElement | null>(null);
-
 
   useEffect(() => {
     if (cellRef.current) {
@@ -120,10 +120,10 @@ const CalendarCell: React.FC<Props> = ({
     const open = typeof cellMetrics.open === 'string' ? parseFloat(cellMetrics.open) : cellMetrics.open;
     const close = typeof cellMetrics.close === 'string' ? parseFloat(cellMetrics.close) : cellMetrics.close;
     if (close > open)
-      return <UpArrow className="w-3 h-3 sm:w-4 sm:h-4 text-green-700" />;
+      return <UpArrow className="w-2 h-2 xs:w-3 xs:h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-green-700 flex-shrink-0" />;
     if (close < open)
-      return <DownArrow className="w-3 h-3 sm:w-4 sm:h-4 text-red-700" />;
-    return <NeutralDash className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" />;
+      return <DownArrow className="w-2 h-2 xs:w-3 xs:h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-red-700 flex-shrink-0" />;
+    return <NeutralDash className="w-2 h-2 xs:w-3 xs:h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gray-600 flex-shrink-0" />;
   };
 
   const renderVolumeDot = () => {
@@ -134,33 +134,34 @@ const CalendarCell: React.FC<Props> = ({
         : String(cellMetrics.volume);
     const volumeNum = parseFloat(volumeStr);
 
-    let sizeClass = "w-2 h-2";
-    if (volumeNum > 3) sizeClass = "w-4 h-4";
-    else if (volumeNum > 1.5) sizeClass = "w-3 h-3";
+    let sizeClass = "w-1 h-1 xs:w-1.5 xs:h-1.5 sm:w-2 sm:h-2";
+    if (volumeNum > 3) sizeClass = "w-2 h-2 xs:w-3 xs:h-3 sm:w-4 sm:h-4";
+    else if (volumeNum > 1.5) sizeClass = "w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-3 sm:h-3";
 
     return (
       <div
         title={`Volume: ${cellMetrics.volume}`}
-        className={`absolute bottom-2 right-2 rounded-full bg-blue-600 ${sizeClass} flex items-center justify-center`}
+        className={`absolute bottom-1 right-1 xs:bottom-1.5 xs:right-1.5 sm:bottom-2 sm:right-2 rounded-full bg-blue-600 ${sizeClass} flex items-center justify-center`}
       />
     );
   };
 
   const renderVolatilityRangeBar = () => {
     if (!cellMetrics?.volatilityRange) return null;
-  
+
     const range = cellMetrics.volatilityRange;
     const normalized = Math.min(100, Math.max(0, range));
     const barHeight = `${Math.min(100, normalized)}%`;
-  
+
     return (
-      <div className="absolute left-1 bottom-1 w-1.5 bg-purple-500 rounded"
-           style={{ height: barHeight }}
-           title={`Intraday Range: ${range.toFixed(2)}%`}
+      <div 
+        className="absolute left-0.5 bottom-0.5 w-1 xs:left-1 xs:bottom-1 xs:w-1.5 sm:left-1 sm:bottom-1 sm:w-1.5 lg:w-2 bg-purple-500 rounded"
+        style={{ height: barHeight }}
+        title={`Intraday Range: ${range.toFixed(2)}%`}
       />
     );
   };
-  
+
   const renderLiquidityOverlay = () => {
     if (!cellMetrics || !cellMetrics.liquidity) return null;
     const liquidityValue = cellMetrics.liquidity;
@@ -178,7 +179,7 @@ const CalendarCell: React.FC<Props> = ({
 
     return (
       <div
-        className={`absolute inset-0 rounded-md pointer-events-none ${gradient}`}
+        className={`absolute inset-0 rounded-sm xs:rounded sm:rounded-md pointer-events-none ${gradient}`}
       />
     );
   };
@@ -187,9 +188,7 @@ const CalendarCell: React.FC<Props> = ({
   const liquidityValue = cellMetrics?.liquidity;
 
   if (typeof liquidityValue === "number") {
-
     const normalizedLiquidity = Math.min(1, Math.max(0, liquidityValue / 100));
-
     background = `linear-gradient(to bottom, rgba(34, 197, 94, ${normalizedLiquidity}) 0%, transparent 100%)`;
   }
 
@@ -199,28 +198,30 @@ const CalendarCell: React.FC<Props> = ({
     setFocusedDate(key);
 
     if (cellMetrics) {
+      const chartData = calendarData?.filter((entry) => entry.date <= key)
+        .slice(-10);
       const modalContent = (
-        <div className="p-4">
-          <h4 className="font-semibold mb-4">
+        <div className="p-3 sm:p-4 lg:p-6 max-w-full overflow-hidden">
+          <h4 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base lg:text-lg">
             {format(day, 'EEEE, MMMM d, yyyy')}
           </h4>
-          <div className="grid gap-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Open:</span>
-              <span>${cellMetrics.open}</span>
+          <div className="grid gap-2 sm:gap-3 text-xs sm:text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 min-w-0 flex-shrink-0 mr-2">Open:</span>
+              <span className="font-medium truncate">${cellMetrics.open}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Close:</span>
-              <span>${cellMetrics.close}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 min-w-0 flex-shrink-0 mr-2">Close:</span>
+              <span className="font-medium truncate">${cellMetrics.close}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Volume:</span>
-              <span>{cellMetrics.volume}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 min-w-0 flex-shrink-0 mr-2">Volume:</span>
+              <span className="font-medium truncate">{cellMetrics.volume}</span>
             </div>
             {cellMetrics.volatility !== undefined && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Volatility:</span>
-                <span>{
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 min-w-0 flex-shrink-0 mr-2">Volatility:</span>
+                <span className="font-medium truncate">{
                   typeof cellMetrics.volatility === 'number'
                     ? `${cellMetrics.volatility.toFixed(2)}%`
                     : cellMetrics.volatility
@@ -228,23 +229,28 @@ const CalendarCell: React.FC<Props> = ({
               </div>
             )}
             {(cellMetrics.performance !== undefined && cellMetrics.performance !== null) ? (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Performance:</span>
-                <span className={cellMetrics.performance >= 0 ? 'text-green-600' : 'text-red-600'}>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 min-w-0 flex-shrink-0 mr-2">Performance:</span>
+                <span className={`font-medium truncate ${cellMetrics.performance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {cellMetrics.performance >= 0 ? '↑' : '↓'} {Math.abs(Number(cellMetrics.performance)).toFixed(2)}%
                 </span>
               </div>
             ) : null}
             {cellMetrics.volatilityRange !== undefined && (
-  <div className="flex justify-between">
-    <span className="text-gray-600">Intraday Range:</span>
-    <span>{cellMetrics.volatilityRange.toFixed(2)}%</span>
-  </div>
-)}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 min-w-0 flex-shrink-0 mr-2">Intraday Range:</span>
+                <span className="font-medium truncate">{cellMetrics.volatilityRange.toFixed(2)}%</span>
+              </div>
+            )}
           </div>
+          {(chartData ?? []).length > 0 && (
+            <div className="mt-4 sm:mt-6 overflow-hidden">
+              <MiniChart data={chartData ?? []} type="line" metric="close" />
+            </div>
+          )}
         </div>
       );
-      openModal(modalContent);
+      openModal(modalContent, "2025-07-29");
     }
   };
 
@@ -256,6 +262,20 @@ const CalendarCell: React.FC<Props> = ({
     setShowTooltip("");
   };
 
+  const getCellSizeClasses = () => {
+    if (viewMode === 'daily') {
+      return "h-32 xs:h-40 sm:h-48 lg:h-56 xl:h-64 w-full";
+    }
+    return "h-12 xs:h-14 sm:h-16 md:h-20 lg:h-24 aspect-square";
+  };
+
+  const getDateNumberClasses = () => {
+    if (viewMode === 'daily') {
+      return "w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-lg xs:text-xl sm:text-2xl lg:text-3xl";
+    }
+    return "w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-xs xs:text-sm sm:text-base";
+  };
+
   return (
     <div
       tabIndex={0}
@@ -265,29 +285,67 @@ const CalendarCell: React.FC<Props> = ({
       onMouseLeave={handleMouseLeave}
       onKeyDown={handleKeyDown}
       className={clsx(
-        "group p-1 sm:p-2 text-xs sm:text-sm relative ml-12 rounded-md transition duration-300 ease-in-out shadow-sm cursor-pointer focus:outline-none aspect-square h-16 sm:h-20 overflow-visible",
+        "group relative rounded-sm xs:rounded sm:rounded-md transition-all duration-200 ease-in-out shadow-sm cursor-pointer focus:outline-none overflow-hidden",
+        "p-0.5 xs:p-1 sm:p-1.5 md:p-2",
+        "text-xs xs:text-sm sm:text-base",
+        getCellSizeClasses(),
         getColorByVolatility(volatility),
         isCurrentMonth ? "text-black" : "text-gray-400 bg-gray-50",
-        isDayToday && "ring-2 ring-blue-400 font-bold",
-        (isFocused || focusedDate === key) && "ring-2 ring-blue-500 ring-offset-2 z-20",
-        !isCurrentMonth && "opacity-60"
+        isDayToday && "ring-1 xs:ring-2 ring-blue-400 font-bold shadow-md",
+        (isFocused || focusedDate === key) && "ring-2 xs:ring-2 sm:ring-2 ring-blue-500 ring-offset-1 xs:ring-offset-2 z-20 shadow-lg",
+        !isCurrentMonth && "opacity-60",
+        "hover:shadow-md hover:scale-105 transform transition-transform"
       )}
+      style={background ? { background } : undefined}
     >
-      <div className="absolute inset-0 flex flex-col p-1">
-        <div className="flex justify-between items-start">
+      <div className="absolute inset-0 flex flex-col p-0.5 xs:p-1 sm:p-1.5 md:p-2">
+        <div className="flex justify-between items-start w-full">
           <div
             className={clsx(
-              "w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm",
+              "flex items-center justify-center font-medium flex-shrink-0",
+              getDateNumberClasses(),
               isDayToday
-                ? "bg-blue-100 border-2 border-blue-500 rounded-full font-bold text-blue-700"
-                : "text-red-700 font-bold"
+                ? "bg-blue-100 border-1 xs:border-2 border-blue-500 rounded-full font-bold text-blue-700 shadow-sm"
+                : viewMode === 'daily' 
+                ? "text-gray-800 font-bold" 
+                : "text-gray-700 font-semibold"
             )}
           >
             {formattedDate}
           </div>
-          {metrics && renderPerformanceIcon()}
+          <div className="flex-shrink-0 ml-1">
+            {metrics && renderPerformanceIcon()}
+          </div>
         </div>
 
+        {viewMode === 'daily' && cellMetrics && (
+          <div className="flex-1 mt-2 xs:mt-3 sm:mt-4 space-y-1 xs:space-y-2 text-xs xs:text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Open:</span>
+              <span className="font-medium">${cellMetrics.open}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Close:</span>
+              <span className="font-medium">${cellMetrics.close}</span>
+            </div>
+            {cellMetrics.volume && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Volume:</span>
+                <span className="font-medium truncate">{cellMetrics.volume}</span>
+              </div>
+            )}
+            {cellMetrics.volatility !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Volatility:</span>
+                <span className="font-medium">
+                  {typeof cellMetrics.volatility === 'number'
+                    ? `${cellMetrics.volatility.toFixed(1)}%`
+                    : cellMetrics.volatility}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {cellMetrics && (

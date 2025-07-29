@@ -44,6 +44,7 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const { marketData, loading, error } = useMarketData();
+  const { selectedTimeframe } = useCalendar();
 
   const filteredMarketData = useMemo(() => {
     if (!marketData) return [];
@@ -235,27 +236,29 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner className="h-8 w-8 text-blue-500" />
-        <span className="ml-2">Loading market data...</span>
+      <div className="flex flex-col items-center justify-center h-64 sm:h-80 lg:h-96 px-4">
+        <Spinner className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500" />
+        <span className="ml-2 mt-4 text-sm sm:text-base text-gray-600 text-center">Loading market data...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error loading data</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="p-4 sm:p-6">
+        <Alert variant="destructive" className="max-w-full">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <AlertTitle className="text-sm sm:text-base">Error loading data</AlertTitle>
+          <AlertDescription className="text-xs sm:text-sm mt-1">{error}</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   if (metrics.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        No market data available for the selected period.
+      <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96 text-gray-500 px-4">
+        <p className="text-sm sm:text-base text-center">No market data available for the selected period.</p>
       </div>
     );
   }
@@ -275,12 +278,12 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-white rounded-lg shadow-sm" id="calendar-container">
-      <div className="sticky top-0 bg-white z-10 border-b border-gray-100 p-4">
+      <div className="sticky top-0 bg-white z-10 border-b border-gray-100 p-2 sm:p-4">
         <CalendarHeader />
       </div>
 
-      <div className="flex-1 overflow-auto p-2 sm:p-4">
-        <div id="export-area" className="w-full">
+      <div className="flex-1 overflow-auto p-1 sm:p-2 lg:p-4">
+        <div id="export-area" className="w-full overflow-x-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={viewMode + selectedDate?.toDateString()}
@@ -288,15 +291,19 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 30 }}
               transition={{ duration: 0.25 }}
-              className="grid grid-cols-7 gap-2 w-full min-w-[360px]"
+              className={clsx("w-full", {
+                "grid grid-cols-7 gap-1 sm:gap-2 min-w-[300px] sm:min-w-[400px] lg:min-w-[600px]": viewMode !== "daily",
+                "min-w-full": viewMode === "daily",
+              })}
             >
               {viewMode !== "daily" &&
                 ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(day => (
                   <div
                     key={day}
-                    className="text-xs font-medium text-center py-3 text-gray-500 uppercase tracking-wider"
+                    className="text-xs sm:text-sm font-medium text-center py-2 sm:py-3 text-gray-500 uppercase tracking-wider"
                   >
-                    {day}
+                    <span className="hidden sm:inline">{day}</span>
+                    <span className="sm:hidden">{day.substring(0, 1)}</span>
                   </div>
                 ))}
 
@@ -314,13 +321,13 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
                   <div
                     key={dateKey}
                     className={clsx("relative transition-colors duration-150 group", {
-                      "col-span-7 w-full min-h-[120px] sm:min-h-[160px]": viewMode === "daily",
-                      "min-h-[80px] sm:min-h-[100px] rounded-md overflow-visible": viewMode !== "daily",
+                      "col-span-7 w-full min-h-[120px] sm:min-h-[160px] lg:min-h-[200px]": viewMode === "daily",
+                      "min-h-[60px] sm:min-h-[80px] lg:min-h-[100px] rounded-md overflow-visible": viewMode !== "daily",
                       "opacity-60": !isCurrentMonth && viewMode !== "daily",
                       "cursor-pointer": !isSelected && viewMode !== "daily",
                       "bg-yellow-300": isInRange,
-                      "border-l-4 border-blue-500": isSelectedStart,
-                      "border-r-4 border-blue-500": isSelectedEnd,
+                      "border-l-2 sm:border-l-4 border-blue-500": isSelectedStart,
+                      "border-r-2 sm:border-r-4 border-blue-500": isSelectedEnd,
                     })}
                     onClick={() => handleDateClick(day)}
                   >
@@ -343,49 +350,71 @@ const Calendar: React.FC<CalendarProps> = ({ selectedMetrics }) => {
       </div>
 
       {rangeStart && rangeEnd && rangeSummary && (
-        <div className="p-4 bg-white shadow rounded mt-4 text-sm text-gray-700">
-          <div>
-            <strong>{rangeStart.toDateString()}</strong> to <strong>{rangeEnd.toDateString()}</strong>
-          </div>
-          <div className="mt-2 flex flex-row flex-wrap justify-between">
-            <div>
-            Data points: <strong>{rangeSummary.count}</strong><br />
-            {selectedMetrics.includes("volatility") && (
-              <>Avg Volatility: <strong>{rangeSummary.avgVolatility}</strong><br /></>
-            )}
-            {selectedMetrics.includes("liquidity") && (
-              <>Total Liquidity: <strong>{rangeSummary.totalLiquidity.toLocaleString()}</strong><br /></>
-            )}
-            {selectedMetrics.includes("performance") && (
-              <>Avg Performance: <strong>{rangeSummary.avgPerformance}</strong><br /></>
-            )}
-            {selectedMetrics.includes("liquidity") && selectedMetrics.length === 1 && (
-              <>Total Volume: <strong>{rangeSummary.totalVolume.toLocaleString()}</strong><br /></>
-            )}
-            </div>
-            <div>
-            <button
-            onClick={() => {
-              setRangeStart(null);
-              setRangeEnd(null);
-            }}
-            className="mt-10 w-full sm:w-auto px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-500 rounded-md hover:bg-indigo-100 hover:text-indigo-700 transition duration-200 text-center"
-          >
-            Clear Selection
-          </button>
-          </div>
+        <div className="p-3 sm:p-4 lg:p-6 bg-gray-50 border-t border-gray-200 mx-2 sm:mx-4 lg:mx-6 mb-2 sm:mb-4 lg:mb-6 rounded-lg shadow-sm">
+          <div className="mb-3 sm:mb-4">
+            <h4 className="text-sm sm:text-base font-medium text-gray-900 mb-2">Date Range Summary</h4>
+            <p className="text-xs sm:text-sm text-gray-600">
+              <strong>{rangeStart.toDateString()}</strong> to <strong>{rangeEnd.toDateString()}</strong>
+            </p>
           </div>
           
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            <div className="bg-white p-3 rounded-md border border-gray-200">
+              <p className="text-xs text-gray-500">Data Points</p>
+              <p className="text-sm sm:text-base font-semibold text-gray-900">{rangeSummary.count}</p>
+            </div>
+            
+            {selectedMetrics.includes("volatility") && (
+              <div className="bg-white p-3 rounded-md border border-gray-200">
+                <p className="text-xs text-gray-500">Avg Volatility</p>
+                <p className="text-sm sm:text-base font-semibold text-gray-900">{rangeSummary.avgVolatility}</p>
+              </div>
+            )}
+            
+            {selectedMetrics.includes("liquidity") && (
+              <div className="bg-white p-3 rounded-md border border-gray-200">
+                <p className="text-xs text-gray-500">Total Liquidity</p>
+                <p className="text-sm sm:text-base font-semibold text-gray-900">{rangeSummary.totalLiquidity.toLocaleString()}</p>
+              </div>
+            )}
+            
+            {selectedMetrics.includes("performance") && (
+              <div className="bg-white p-3 rounded-md border border-gray-200">
+                <p className="text-xs text-gray-500">Avg Performance</p>
+                <p className="text-sm sm:text-base font-semibold text-gray-900">{rangeSummary.avgPerformance}</p>
+              </div>
+            )}
+            
+            {selectedMetrics.includes("liquidity") && selectedMetrics.length === 1 && (
+              <div className="bg-white p-3 rounded-md border border-gray-200">
+                <p className="text-xs text-gray-500">Total Volume</p>
+                <p className="text-sm sm:text-base font-semibold text-gray-900">{rangeSummary.totalVolume.toLocaleString()}</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                setRangeStart(null);
+                setRangeEnd(null);
+              }}
+              className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 hover:text-indigo-800 transition-colors duration-200 border border-indigo-200"
+            >
+              Clear Selection
+            </button>
+          </div>
         </div>
       )}
 
-      <ExportControls
-        data={filteredMarketData}
-        elementId="export-area"
-        fileName="market-data"
-        className="your-custom-classes"
-      />
+      <div className="border-t border-gray-200 p-3 sm:p-4 lg:p-6">
+        <ExportControls
+          data={filteredMarketData}
+          elementId="export-area"
+          fileName="market-data"
+          className="w-full"
+        />
+      </div>
     </div>
   );
 };
